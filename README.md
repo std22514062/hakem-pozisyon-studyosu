@@ -2,6 +2,14 @@
 
 Pozisyonu anlat, 3D canlandır, IFAB Oyun Kuralları 2026/27'ye göre değerlendir.
 
+### ▶ [Uygulamayı tarayıcıda aç](https://std22514062.github.io/hakem-pozisyon-studyosu/)
+
+[![Uygulamayı aç](https://img.shields.io/badge/Uygulamay%C4%B1_a%C3%A7-std22514062.github.io-0d6b47?style=for-the-badge)](https://std22514062.github.io/hakem-pozisyon-studyosu/)
+
+**İndirmen gerekmez.** Bağlantıya tıkla, uygulama telefonda, tablette ya da bilgisayarda doğrudan tarayıcıda açılır. Kayıt ya da kurulum yok. İstersen sonra ana ekrana da ekleyebilirsin (aşağıda nasıl yapılacağı yazıyor).
+
+Bu sayfadaki dosyalar uygulamanın kaynak kodudur; kullanmak için onlara dokunman gerekmez.
+
 Faul, elle oynama, ofsayt ve oyunu geciktirme pozisyonlarını adım adım tarif edersin. Uygulama pozisyonu 3D olarak canlandırır: temas anını iki açıdan tekrar gösterir, kare kare ilerletmene izin verir. Sonra karar kartını çıkarır: karar, yeniden başlama, disiplin cezası, ilgili kurallar ve VAR notu.
 
 Telefon, tablet ve bilgisayarda tarayıcıdan açılır. Ana ekrana uygulama olarak kurulabilir ve ilk açılıştan sonra internetsiz çalışır.

@@ -2,6 +2,10 @@
 
 Her güncelleme burada en yenisi üstte olacak şekilde listelenir. Ayrıntılı kod farkları için GitHub'daki commit geçmişine bakın.
 
+## 2026-11-20 · GitHub sayfasından tek tıkla açılış
+- README'nin en üstüne **Uygulamayı tarayıcıda aç** bağlantısı ve düğmesi eklendi; indirme gerekmediği açıkça yazıldı.
+- Depo açıklamasına (About) site adresi ve konu etiketleri eklendi.
+
 ## 2026-11-20 · Yapay zekâ özellikleri kaldırıldı
 - "Claude ile çözümle" ve "Claude'a sor" kaldırıldı. Uygulama artık yalnızca pozisyonu canlandırıyor ve kurallara göre değerlendiriyor; hiçbir yapay zekâ hizmetine bağlanmıyor.
 - **Anlatımı çözümle** düğmesi her zaman cihazdaki anahtar kelime çözümleyicisini kullanıyor.
