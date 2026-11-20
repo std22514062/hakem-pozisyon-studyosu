@@ -206,8 +206,6 @@ fieldset.q legend{font-weight:600;font-size:13px;margin-bottom:6px;padding:0}
 .badge{display:inline-block;font:600 10.5px var(--f-mono);letter-spacing:.06em;background:var(--yellow);color:var(--yellow-ink);border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:1px}
 .notes{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
 .varbox{font-size:13px;background:var(--surface-2);border-radius:8px;padding:9px 11px}
-.ask textarea{min-height:60px}
-.answer{font-size:13.5px;white-space:pre-wrap;margin-top:8px}
 .cardfoot{display:flex;gap:8px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:50}
 
@@ -233,7 +231,7 @@ fieldset.q legend{font-weight:600;font-size:13px;margin-bottom:6px;padding:0}
 </style>
 
 
-<link rel="stylesheet" href="pwa.css?v=20261120103606">
+<link rel="stylesheet" href="pwa.css?v=20261120105126">
 </head>
 <body><div class="app">
   <header class="top">
@@ -338,12 +336,6 @@ fieldset.q legend{font-weight:600;font-size:13px;margin-bottom:6px;padding:0}
         <div id="cNewsWrap" hidden><h3>2026/27 ile gelenler</h3><div id="cNews"></div></div>
         <div><h3>VAR</h3><div class="varbox" id="cVar"></div></div>
         <div id="cNotesWrap" hidden><h3>Dikkat edilecekler</h3><ul class="notes" id="cNotes"></ul></div>
-        <div class="ask" id="askWrap" hidden>
-          <h3>Claude'a sor</h3>
-          <textarea id="askQ" placeholder="Örn: Savunmacı topa dokunmuş olsaydı karar değişir miydi?"></textarea>
-          <div class="row" style="margin-top:6px"><button class="btn" id="askBtn" type="button">Sor</button><button class="btn" id="askStop" type="button" hidden>Durdur</button></div>
-          <div class="answer" id="askA"></div>
-        </div>
         <div class="cardfoot">
           <button class="btn" id="copyBtn" type="button">Kararı kopyala</button>
           <button class="btn" id="replay2" type="button">Tekrar izle</button>
@@ -2557,7 +2549,6 @@ function fillCard(R) {
   $('#cVar').textContent = R.var;
   const no = $('#cNotes'); no.innerHTML = ''; $('#cNotesWrap').hidden = !R.notes.length;
   for (const n of R.notes) { const li = document.createElement('li'); li.textContent = n; no.appendChild(li); }
-  $('#askA').textContent = '';
 }
 function openCard() { $('#card').classList.add('open'); if (matchMedia('(max-width: 880px)').matches) $('#card').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 function closeCard() { $('#card').classList.remove('open'); }
@@ -2712,27 +2703,6 @@ function setCam(m) {
 }
 
 /* ============================== anlatımı çözümleme ============================== */
-let sampleFn = null;
-function schemaText() {
-  return Object.entries(Q).map(([t, qs]) => `• type="${t}" (${TYPE_LABEL[t]}):\n` + qs.map(q => `   - ${q.id} — ${q.label}: ${q.opts.map(o => `"${o[0]}"=${o[1]}`).join(', ')}`).join('\n')).join('\n');
-}
-function buildParsePrompt(text) {
-  return `Sen deneyimli bir futbol hakemi eğitmenisin. Kullanıcının Türkçe anlattığı futbol pozisyonunu, 3D canlandırma ve kural değerlendirmesi yapan bir uygulamanın formuna dönüştür.
-
-Yalnızca şu biçimde tek bir JSON nesnesi döndür:
-{"type":"foul|handball|offside|delay","answers":{"<alan>":"<değer>"},"pos":{"<işaretçi>":{"x":<sayı>,"z":<sayı>}},"summary":"<pozisyonun tek cümlelik Türkçe özeti>","assumptions":["<anlatımda geçmeyen ve senin varsaydığın her bilgi, kısa Türkçe>"]}
-
-Saha koordinatları (metre): x = orta çizgiden hücum edilen kaleye doğru (0 orta çizgi, 52.5 kale çizgisi, kendi yarı alanı negatif). z = genişlik (-34 sol taç çizgisi, +34 sağ taç çizgisi, 0 orta). Ceza sahası: x>=36 ve |z|<=20.16. Penaltı noktası x=41.5,z=0. Kale sahası x>=47.
-İşaretçiler: foul → P (faul yeri). handball → P (ele/kola temas eden oyuncunun yeri), S (topun gönderildiği yer). offside → B (pas anında topun yeri), A (hücumcunun pas anındaki yeri), D (sondan ikinci savunmacının pas anındaki yeri; ofsayt konumu A.x > D.x ve A.x > B.x ile oluşur). delay → işaretçi yok.
-
-Alanlar ve izin verilen değerler (yalnızca bu değerleri kullan):
-${schemaText()}
-
-Kurallar: Anlatımda geçmeyen alanlar için en makul değeri seç ve assumptions listesine yaz. Faulde temas ayrıntılarına özellikle dikkat et: foul.point hücumcunun vücudunda temasın olduğu yer (temas türüne uygun olmalı), foul.studs savunmacının ayağının hangi yüzüyle değdiği, foul.ball topa önce kimin dokunduğu, foul.speed müdahalenin hızı. Hiç temas yoksa ve hücumcu kendini atıyorsa contact="dive" kullan. foul.attack alanını anlatım açıkça "bariz gol şansı" ya da "umut vaat eden atak" demiyorsa "auto" bırak. "Ceza sahası içinde" deniyorsa P'yi ceza sahası içine koy. Ofsayt anlatımında santimetre/metre farkı verilmişse A ile D arasındaki x farkını buna göre ayarla.
-
-Anlatım:
-"""${text.slice(0, 4000)}"""`;
-}
 function applyParsed(obj) {
   if (!obj || typeof obj !== 'object' || !Q[obj.type]) throw new Error('bad');
   const t = obj.type; resetType(t);
@@ -2778,48 +2748,13 @@ function localParse(text) {
   out.summary = `${TYPE_LABEL[out.type]} olarak yorumlandı.`;
   return out;
 }
-let parseCtl = null;
-$('#parseBtn').addEventListener('click', async () => {
+$('#parseBtn').addEventListener('click', () => {
   const text = $('#story').value.trim();
   if (text.length < 8) { $('#aiStatus').textContent = 'Önce pozisyonu birkaç cümleyle anlatın.'; return; }
   ensureAudio(); rosterFromText(text);
-  if (!sampleFn) { try { applyParsed(localParse(text)); $('#aiStatus').textContent = 'Anahtar kelimelerle çözümlendi.'; } catch (e) { $('#aiStatus').textContent = 'Anlatım çözümlenemedi; soruları elle doldurun.'; } return; }
-  const btn = $('#parseBtn'); btn.disabled = true; $('#aiStatus').textContent = 'Claude anlatımı okuyor…';
-  try {
-    parseCtl = new AbortController();
-    const obj = await sampleFn.json(buildParsePrompt(text), { signal: parseCtl.signal });
-    applyParsed(obj); $('#aiStatus').textContent = 'Çözümlendi ve canlandırıldı.';
-  } catch (e) {
-    const code = e && e.code;
-    if (code === 'not_granted' || code === 'sampling_disabled' || code === 'not_declared') { sampleFn = null; updateAIUI(); try { applyParsed(localParse(text)); $('#aiStatus').textContent = 'Claude kullanılamıyor; anahtar kelimelerle çözümlendi.'; } catch (_) { } }
-    else if (code === 'rate_limited') $('#aiStatus').textContent = 'Çok sık istek gönderildi; biraz sonra tekrar deneyin.';
-    else if (code === 'invalid_json') $('#aiStatus').textContent = 'Yanıt okunamadı. Tekrar deneyin ya da anlatımı sadeleştirin.';
-    else if (code !== 'cancelled') $('#aiStatus').textContent = 'Bağlantı sorunu oluştu. Tekrar deneyin.';
-  } finally { btn.disabled = false; }
+  try { applyParsed(localParse(text)); $('#aiStatus').textContent = 'Çözümlendi ve canlandırıldı.'; }
+  catch (e) { $('#aiStatus').textContent = 'Anlatım çözümlenemedi; soruları elle doldurun.'; }
 });
-function updateAIUI() {
-  $('#parseBtn').textContent = sampleFn ? 'Claude ile çözümle' : 'Anlatımı çözümle';
-  $('#askWrap').hidden = !sampleFn;
-}
-let askCtl = null;
-$('#askBtn').addEventListener('click', async () => {
-  const q = $('#askQ').value.trim(); if (!q || !sampleFn || !RES) return;
-  askCtl = new AbortController(); $('#askBtn').disabled = true; $('#askStop').hidden = false; $('#askA').textContent = 'Düşünüyor…';
-  const prompt = `Sen IFAB Oyun Kuralları 2026/27 (1 Temmuz 2026'dan itibaren geçerli) konusunda uzman bir hakem eğitmenisin. Bir hakem aşağıdaki pozisyonu ve uygulamanın verdiği kararı inceliyor. Sorusunu Türkçe, kısa (en fazla 150 kelime) ve kural numarası vererek yanıtla. Emin olmadığın noktada bunu açıkça söyle; resmi metne bakılmasını öner.
-
-POZİSYON
-${describe()}
-
-UYGULAMANIN KARARI
-${summaryText()}
-
-SORU
-${q}`;
-  try { await sampleFn(prompt, { signal: askCtl.signal, cache: false, onText: ({ text }) => { $('#askA').textContent = text; } }); }
-  catch (e) { const c = e && e.code; $('#askA').textContent = (e && e.text) || ''; if (c === 'not_granted' || c === 'sampling_disabled') { sampleFn = null; updateAIUI(); } else if (c && c !== 'cancelled') $('#askA').textContent += (e.text ? '\n\n' : '') + (c === 'rate_limited' ? 'Çok sık istek gönderildi; biraz sonra tekrar deneyin.' : 'Yanıt alınamadı. Tekrar deneyin.'); }
-  finally { $('#askBtn').disabled = false; $('#askStop').hidden = true; }
-});
-$('#askStop').addEventListener('click', () => askCtl && askCtl.abort());
 
 /* ============================== başlangıç ============================== */
 function initScene() {
@@ -2883,11 +2818,9 @@ function boot() {
   // forma yazıları doğru yazı tipiyle çizilsin diye fontu en fazla 1,5 sn bekle
   const fontWait = document.fonts && document.fonts.load ? document.fonts.load(`700 40px "Barlow Condensed"`) : Promise.resolve();
   Promise.race([fontWait, new Promise(r => setTimeout(r, 1500))]).catch(() => { }).then(() => run(true));
-  updateAIUI();
-  (async () => { try { if (window.claude && window.claude.use) { sampleFn = await window.claude.use('sample'); } } catch (e) { sampleFn = null; } updateAIUI(); })();
 }
 boot();
 </script>
-<script src="pwa.js?v=20261120103606"></script>
+<script src="pwa.js?v=20261120105126"></script>
 </body>
 </html>

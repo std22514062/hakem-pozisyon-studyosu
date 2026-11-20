@@ -19,6 +19,7 @@ Telefon, tablet ve bilgisayarda tarayıcıdan açılır. Ana ekrana uygulama ola
 | `pwa-src/` | Kurulum parçaları: `manifest.webmanifest`, servis çalışanı `sw.js`, yükleme düğmesi `pwa.js` / `pwa.css`, ikon. |
 | `build-pwa.ps1` | İkisini birleştirip yayınlanacak `docs/` klasörünü üretir; PNG ikonları da çizer. |
 | `docs/` | GitHub Pages'in yayınladığı hazır site (elle düzenlenmez, betikle üretilir). |
+| `CHANGELOG.md` | Sürüm sürüm neyin değiştiği. |
 
 ## Güncelleme
 1. `pozisyon-studyosu.html` dosyasında değişikliği yap.
@@ -27,6 +28,6 @@ Telefon, tablet ve bilgisayarda tarayıcıdan açılır. Ana ekrana uygulama ola
 4. GitHub Pages bir iki dakika içinde yeni sürümü yayınlar. Uygulamayı kurmuş olanlar bir sonraki açılışta "Yeni sürüm hazır · Yenile" bildirimini görür.
 
 ## Notlar
-- Anlatım, anahtar kelime çözümleyicisiyle çözülür. "Claude ile çözümle" ve "Claude'a sor" yalnızca uygulama claude.ai içinde açıldığında çalışır.
+- Uygulama bir yapay zekâ aracı değildir; yalnızca pozisyonu canlandırır ve kurallara göre değerlendirir. Anlatım, cihazda çalışan bir anahtar kelime çözümleyicisiyle forma aktarılır; hiçbir veri dışarı gönderilmez. Pozisyonu tartışmak isteyen, **Kararı kopyala** ile metni alıp kendi kullandığı yapay zekâ aracına sorabilir.
 - Oyuncu isimleri varsayılan olarak kapalıdır. **Görünüm → Oyuncu isimleri** seçeneğiyle açılabilir.
 - 3D kütüphanesi: [three.js](https://threejs.org) r147 (MIT lisansı), jsDelivr üzerinden yüklenir ve çevrimdışı kullanım için önbelleğe alınır.
