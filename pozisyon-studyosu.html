@@ -1529,26 +1529,24 @@ function grassDetail() {
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
 }
-function crowdTex() {
+// taraftar renkleri: çoğunluk takım forması tonları, arada az sayıda nötr kıyafet
+const CROWD_PAL = {
+  home: [[.74, ['#c8432a', '#b63a24', '#d4553a', '#a8341f']], [.1, ['#e8e6e2', '#d6d3cd']], [.16, ['#2a2e35', '#383c44', '#1f2329', '#4a4d52', '#5a5248']]],
+  away: [[.74, ['#2a55c2', '#2349a8', '#3462cf', '#1d3c8c']], [.1, ['#e8e6e2', '#d6d3cd']], [.16, ['#2a2e35', '#383c44', '#1f2329', '#4a4d52', '#5a5248']]]
+};
+function crowdTex(pal) {
+  const pick = () => { let r = Math.random(); for (const [w, cs] of pal) { if ((r -= w) < 0) return cs[(Math.random() * cs.length) | 0]; } return pal[0][1][0]; };
   const t = canvasTex(1024, 512, (g, W, H) => {
     g.fillStyle = '#121822'; g.fillRect(0, 0, W, H);
     for (let y = 0; y < H; y += 16) { g.fillStyle = (y / 16) % 2 ? '#1a2230' : '#161d29'; g.fillRect(0, y + 6, W, 9); }
-    const cols = ['#d9472b', '#b3301f', '#e25a3c', '#2856c9', '#1d3f99', '#e9e9e9', '#d0d0d0', '#20242c', '#f2c230', '#56607a', '#3d7a4a'];
-    const heads = ['#e0b48e', '#c99a74', '#a8784f', '#7a5236', '#f0cba8'];
+    const heads = ['#e0b48e', '#c99a74', '#a8784f', '#7a5236', '#f0cba8', '#2a2420', '#3b2e24'];
     for (let y = 2; y < H; y += 16) for (let x = 1; x < W; x += 6 + Math.random() * 4) {
-      if (Math.random() < .12) continue;
-      g.fillStyle = cols[(Math.random() * cols.length) | 0]; g.fillRect(x, y + 4, 5, 8);
+      if (Math.random() < .1) continue;
+      g.fillStyle = pick(); g.fillRect(x, y + 4, 5, 8);
       g.fillStyle = heads[(Math.random() * heads.length) | 0]; g.fillRect(x + 1, y, 3, 4);
     }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
-}
-function boardTex() {
-  return canvasTex(2048, 64, (g, W, H) => {
-    const msgs = [['FAIR PLAY', '#0d6b47', '#ffffff'], ['HAKEM AKADEMİSİ', '#101820', '#f2c230'], ['IFAB 2026/27', '#1d3b8a', '#ffffff'], ['SAYGI', '#c42a35', '#ffffff'], ['VAR', '#111111', '#7cc4ff'], ['OYUN KURALLARI', '#0b2a4a', '#ffffff']];
-    const w = W / msgs.length;
-    msgs.forEach(([t, bg, fg], i) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, bg); gr.addColorStop(1, '#05080c'); g.fillStyle = gr; g.fillRect(i * w, 0, w, H); g.fillStyle = fg; g.font = `700 40px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, i * w + w / 2, H / 2 + 2); });
-  });
 }
 function glowTex() {
   return canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,250,235,1)'); gr.addColorStop(.18, 'rgba(255,245,220,.75)'); gr.addColorStop(.5, 'rgba(255,240,210,.18)'); gr.addColorStop(1, 'rgba(255,240,210,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
@@ -1569,35 +1567,30 @@ function buildWorld() {
   dm.rotation.x = -Math.PI / 2; dm.position.y = .002; dm.receiveShadow = true; scene.add(dm);
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(320, 240), new THREE.MeshStandardMaterial({ color: 0x23432a, roughness: 1 }));
   outer.rotation.x = -Math.PI / 2; outer.position.y = -.02; outer.receiveShadow = true; scene.add(outer);
-  // LED reklam panoları
-  const bt = boardTex();
-  const bMat = rep => { const t = bt.clone(); t.needsUpdate = true; t.wrapS = THREE.RepeatWrapping; t.repeat.set(rep, 1); return new THREE.MeshBasicMaterial({ map: t, toneMapped: false }); };
-  const backMat = new THREE.MeshStandardMaterial({ color: 0x0d1219, roughness: .8 });
-  const board = (len, rep, x, z, ry) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(len, .9), bMat(rep)); p.position.set(x, .45, z); p.rotation.y = ry; scene.add(p); const b = new THREE.Mesh(new THREE.BoxGeometry(len, .9, .12), backMat); b.position.set(x - Math.sin(ry) * .07, .45, z - Math.cos(ry) * .07); b.rotation.y = ry; b.castShadow = true; scene.add(b); };
-  board(112, 4, 0, 39, Math.PI); board(112, 4, 0, -39, 0); board(60, 2, 58, 0, -Math.PI / 2); board(60, 2, -58, 0, Math.PI / 2);
-  // tribünler
-  const crowd = crowdTex();
-  const sMat = (ru, rv) => { const t = crowd.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(ru, rv); return new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }); };
+  // tribünler: uzun kenarlar ve hücum edilen kale arkası ev sahibi (kırmızı), diğer kale arkası deplasman (mavi)
+  const crowd = { home: crowdTex(CROWD_PAL.home), away: crowdTex(CROWD_PAL.away) };
+  const sMat = (ru, rv, side = 'home') => { const t = crowd[side].clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(ru, rv); return new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }); };
   const wallMat = new THREE.MeshLambertMaterial({ color: 0x1b2533, side: THREE.DoubleSide });
   const roofMat = new THREE.MeshLambertMaterial({ color: 0x2a3442, side: THREE.DoubleSide });
-  const ledMat = bMat(6); ledMat.side = THREE.DoubleSide;
+  const tierMat = new THREE.MeshLambertMaterial({ color: 0x252e3a, side: THREE.DoubleSide });
   const stripMat = new THREE.MeshBasicMaterial({ color: 0xfff6e0, toneMapped: false });
   for (const sz of [1, -1]) {
     quadMesh([-72, 0, sz * 43], [72, 0, sz * 43], [72, 1.3, sz * 43], [-72, 1.3, sz * 43], wallMat);
     quadMesh([-72, 1.3, sz * 43], [72, 1.3, sz * 43], [72, 16, sz * 64], [-72, 16, sz * 64], sMat(12, 5));
-    quadMesh([-72, 16, sz * 64], [72, 16, sz * 64], [72, 18.4, sz * 64.4], [-72, 18.4, sz * 64.4], ledMat);
+    quadMesh([-72, 16, sz * 64], [72, 16, sz * 64], [72, 18.4, sz * 64.4], [-72, 18.4, sz * 64.4], tierMat);
     quadMesh([-72, 18.4, sz * 64.4], [72, 18.4, sz * 64.4], [72, 32, sz * 84], [-72, 32, sz * 84], sMat(12, 4));
     quadMesh([-74, 36.5, sz * 58], [74, 36.5, sz * 58], [74, 38.5, sz * 88], [-74, 38.5, sz * 88], roofMat);
     const s = new THREE.Mesh(new THREE.BoxGeometry(148, .35, .35), stripMat); s.position.set(0, 36.3, sz * 58.2); scene.add(s);
   }
   for (const sx of [1, -1]) {
+    const side = sx > 0 ? 'home' : 'away';
     quadMesh([sx * 61, 0, -44], [sx * 61, 0, 44], [sx * 61, 1.3, 44], [sx * 61, 1.3, -44], wallMat);
-    quadMesh([sx * 61, 1.3, -44], [sx * 61, 1.3, 44], [sx * 80, 15, 44], [sx * 80, 15, -44], sMat(8, 5));
-    quadMesh([sx * 80, 15, -44], [sx * 80, 15, 44], [sx * 80.4, 17.4, 44], [sx * 80.4, 17.4, -44], ledMat);
-    quadMesh([sx * 80.4, 17.4, -44], [sx * 80.4, 17.4, 44], [sx * 98, 30, 44], [sx * 98, 30, -44], sMat(8, 4));
+    quadMesh([sx * 61, 1.3, -44], [sx * 61, 1.3, 44], [sx * 80, 15, 44], [sx * 80, 15, -44], sMat(8, 5, side));
+    quadMesh([sx * 80, 15, -44], [sx * 80, 15, 44], [sx * 80.4, 17.4, 44], [sx * 80.4, 17.4, -44], tierMat);
+    quadMesh([sx * 80.4, 17.4, -44], [sx * 80.4, 17.4, 44], [sx * 98, 30, 44], [sx * 98, 30, -44], sMat(8, 4, side));
     quadMesh([sx * 76, 34, -46], [sx * 76, 34, 46], [sx * 102, 36, 46], [sx * 102, 36, -46], roofMat);
     // köşe tribünleri
-    for (const sz of [1, -1]) quadMesh([sx * 61, 1.3, sz * 44], [sx * 72, 1.3, sz * 43], [sx * 72, 16, sz * 64], [sx * 80, 15, sz * 44], sMat(3, 5));
+    for (const sz of [1, -1]) quadMesh([sx * 61, 1.3, sz * 44], [sx * 72, 1.3, sz * 43], [sx * 72, 16, sz * 64], [sx * 80, 15, sz * 44], sMat(3, 5, side));
   }
   const wall = new THREE.Mesh(new THREE.CylinderGeometry(150, 150, 44, 48, 1, true), new THREE.MeshBasicMaterial({ color: 0x0a1018, side: THREE.BackSide, fog: false }));
   wall.position.y = 18; scene.add(wall);

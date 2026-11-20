@@ -1,9 +1,9 @@
 /* Hakem Pozisyon Stüdyosu — servis çalışanı
    Uygulama kabuğu ve 3D kütüphanesi ilk açılışta önbelleğe alınır; sonra internet olmadan da çalışır.
    Sayfa ağdan önce denenir (yeni sürüm hemen gelsin), kütüphane ve yazı tipleri önce önbellekten gelir. */
-const VERSION = '20261120105126';
+const VERSION = '20261120110647';
 const CACHE = 'hps-' + VERSION;
-const SHELL = ['./', './index.html', './pwa.js?v=20261120105126', './pwa.css?v=20261120105126', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
+const SHELL = ['./', './index.html', './pwa.js?v=20261120110647', './pwa.css?v=20261120110647', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
 const CDN = [
   'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
   'https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js'

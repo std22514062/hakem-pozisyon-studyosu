@@ -2,6 +2,10 @@
 
 Her güncelleme burada en yenisi üstte olacak şekilde listelenir. Ayrıntılı kod farkları için GitHub'daki commit geçmişine bakın.
 
+## 2026-11-20 · Reklam panoları kaldırıldı, tribünler sadeleşti
+- Saha kenarındaki reklam panoları ve tribün katları arasındaki yazılı LED şerit tamamen kaldırıldı; şeridin yerinde düz koyu bir duvar var.
+- Tribünler takım renklerine göre yeniden boyandı: uzun kenarlar ve hücum edilen kalenin arkası hücum eden takımın kırmızısı, diğer kale arkası savunan takımın mavisi. Seyircilerin yaklaşık dörtte üçü takım rengi giyiyor, kalanı beyaz ve koyu nötr kıyafetler.
+
 ## 2026-11-20 · GitHub sayfasından tek tıkla açılış
 - README'nin en üstüne **Uygulamayı tarayıcıda aç** bağlantısı ve düğmesi eklendi; indirme gerekmediği açıkça yazıldı.
 - Depo açıklamasına (About) site adresi ve konu etiketleri eklendi.
