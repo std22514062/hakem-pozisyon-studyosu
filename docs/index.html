@@ -231,7 +231,7 @@ fieldset.q legend{font-weight:600;font-size:13px;margin-bottom:6px;padding:0}
 </style>
 
 
-<link rel="stylesheet" href="pwa.css?v=20261120110647">
+<link rel="stylesheet" href="pwa.css?v=20261120114158">
 </head>
 <body><div class="app">
   <header class="top">
@@ -813,22 +813,32 @@ function partMarker(point, dirK) {
   }
   return 'ankleR';
 }
-/* hücumcunun temasa tepkisi: poz dizisi + savrulma */
+/* hücumcunun temasa tepkisi: poz dizisi + savrulma.
+   Düşüş aşamaları: denge kaybı → eller/dizler yere → yüzüstü / sırtüstü → yana dönüp bacağı tutma.
+   fam: düştüğü yön (F öne, B arkaya, S yana, H yüz, T ayağını tutup oturma); yerde kalma ve kalkış buna göre seçilir */
 function victimReact(att, kind, tc, r, rn, P, spdK) {
   const ps = att.poses;
   const go = (d, lat, t) => { const q = clampP(add(add(P, mul(r, d)), mul(rn, lat))); att.track.push([t, q.x, q.z, 'e']); return q; };
   switch (kind) {
-    case 'legFwd': ps.push([tc, 'hitLeg', .07], [tc + .12, 'tripFwd', .22], [tc + .38, 'lieFwd', .3, 'in']); return go(1.7 + spdK * .7, 0, tc + .85);
-    case 'legBack': ps.push([tc, 'hitLeg', .07], [tc + .1, 'sweptBack', .2], [tc + .4, 'lieBack', .3, 'in']); return go(.9 + spdK * .4, 0, tc + .7);
-    case 'stamp': ps.push([tc, 'hop', .1], [tc + .55, 'sit', .35, 'in']); return go(1.1, 0, tc + .7);
-    case 'pushF': ps.push([tc, 'pushedFwd', .08], [tc + .38, 'tripFwd', .2], [tc + .62, 'lieFwd', .28, 'in']); return go(2.6 + spdK * .6, 0, tc + 1.0);
-    case 'side': ps.push([tc, 'fallL', .16], [tc + .42, 'lieL', .3, 'in']); return go(1.1, -1.3 - spdK * .4, tc + .8);
-    case 'back': ps.push([tc, 'sweptBack', .15], [tc + .4, 'lieBack', .3, 'in']); return go(.35, 0, tc + .6);
-    case 'head': ps.push([tc, 'headHit', .05], [tc + .5, 'kneelFace', .35]); return go(.9, 0, tc + .7);
-    case 'pulled': ps.push([tc + .02, 'sweptBack', .25], [tc + .42, 'lieBack', .3, 'in']); return go(.7, 0, tc + .7);
-    case 'dive': ps.push([tc - .1, 'dive', .22], [tc + .28, 'lieFwd', .25, 'in']); return go(2.3, 0, tc + .75);
+    case 'legFwd': att.fam = 'F'; ps.push([tc, 'hitLeg', .06], [tc + .1, 'tripFwd', .2], [tc + .3, 'catchFall', .18, 'in'], [tc + .5, 'lieFwd', .28], [tc + 1.05, 'rollSide', .55]); return go(2.0 + spdK * .8, 0, tc + .95);
+    case 'legBack': att.fam = 'B'; ps.push([tc, 'hitLeg', .06], [tc + .1, 'sweptBack', .2], [tc + .34, 'catchBack', .2, 'in'], [tc + .58, 'lieBack', .3], [tc + 1.1, 'rollSideB', .6]); return go(.9 + spdK * .4, 0, tc + .8);
+    case 'stamp': att.fam = 'T'; ps.push([tc, 'hop', .1], [tc + .5, 'sitHold', .4, 'in']); return go(1.0, 0, tc + .7);
+    case 'pushF': att.fam = 'F'; ps.push([tc, 'pushedFwd', .08], [tc + .3, 'tripFwd', .2], [tc + .52, 'catchFall', .18, 'in'], [tc + .72, 'lieFwd', .28], [tc + 1.3, 'rollSide', .55]); return go(2.9 + spdK * .6, 0, tc + 1.1);
+    case 'side': att.fam = 'S'; ps.push([tc, 'fallL', .14], [tc + .36, 'lieL', .28, 'in']); return go(1.1, -1.3 - spdK * .4, tc + .8);
+    case 'back': att.fam = 'B'; ps.push([tc, 'sweptBack', .15], [tc + .3, 'catchBack', .2, 'in'], [tc + .55, 'lieBack', .3]); return go(.4, 0, tc + .65);
+    case 'head': att.fam = 'H'; ps.push([tc, 'headHit', .05], [tc + .45, 'kneelFace', .35]); return go(.9, 0, tc + .7);
+    case 'pulled': att.fam = 'B'; ps.push([tc + .02, 'sweptBack', .25], [tc + .38, 'catchBack', .22, 'in'], [tc + .62, 'lieBack', .3]); return go(.7, 0, tc + .75);
+    case 'dive': att.fam = 'F'; ps.push([tc - .1, 'dive', .2], [tc + .2, 'catchFall', .16, 'in'], [tc + .38, 'lieFwd', .25], [tc + .9, 'rollSide', .5]); return go(2.3, 0, tc + .75);
   }
   return P;
+}
+/* yerde kalma (sakatlık / acı) ya da kalkış: düşüş yönüne göre dik konumdan geçmeyen poz zinciri */
+function victimAfter(att, t0, stay, legHurt) {
+  const ps = att.poses, f = att.fam || 'F';
+  if (stay) { ps.push([t0, { F: legHurt ? 'downAnkle' : 'down', B: 'downB', S: 'lieLHurt', H: 'lieFace', T: 'downB' }[f], .7]); return; }
+  if (f === 'F') ps.push([t0, 'allFours', .5], [t0 + .55, 'kneelUp', .45], [t0 + 1.05, 'stand', .5]);
+  else if (f === 'H') ps.push([t0 + .3, 'kneelUp', .45], [t0 + .85, 'stand', .5]);
+  else ps.push([t0, 'sit', .5], [t0 + .55, 'kneelUp', .45], [t0 + 1.05, 'stand', .5]);
 }
 function reactKind(C, dirK, point) {
   if (C === 'dive') return 'dive';
@@ -889,7 +899,8 @@ function buildFoul(a, P, R) {
   let Dend = Dc, effKey = surf;
   switch (C) {
     case 'tackle':
-      def.poses.push([tc - .5, 'slideIn', .25], [tc + .04, 'slideGround', .3], [tc + 1.0, 'sit', .45], [tc + 2.1, 'stand', .55]);
+      // iniş → zeminde kayış (temas) → yavaşlayıp eliyle dayanma → tek dizden kalkış
+      def.poses.push([tc - .52, 'slideIn', .22], [tc - .28, 'slideGround', .26], [tc + .62, 'slideEnd', .4], [tc + 1.45, 'kneelUp', .5], [tc + 2.05, 'stand', .55]);
       def.ik.push({ limb: 'leg', eff: surf, foot: footO, t0: tc - .62, t1: tc + .8, keys: keysLeg([tc - .4, ['relS', .1, .22, .6]], [tc + .22, ['relS', .1, .12, 1.0]]), main: true, ext });
       if (a.force === 'excessive' && surf === 'sole' && dirK !== 'behind') def.ik.push({ limb: 'legOther', eff: 'sole', foot: { f: -.25, g: 0 }, t0: tc - .55, t1: tc + .8, keys: [[tc - .35, ['relS', .1, .3, .55]], [tc + .02, ['part', 'att', vp, .08, .14]], [tc + .22, ['relS', .1, .2, 1.0]]] });
       Dend = dpos(1.5 + spdK * 1.2, tc + .8); break;
@@ -974,7 +985,7 @@ function buildFoul(a, P, R) {
   if (ballMode === 'after') TL.cap.push([tc + .12, 'Savunmacı temastan sonra topa dokunuyor']);
   // simülasyon
   if (dive) {
-    const E = victimReact(att, 'dive', tc, r, rn, P, spdK); att.poses.push([tc + 1.5, 'sit', .6]);
+    const E = victimReact(att, 'dive', tc, r, rn, P, spdK); victimAfter(att, tc + 1.5, false);
     TL.ball.push({ t0: tc - .1, t1: tc + 1.5, a: 'hold', b: T3(clampP(add(P, mul(r, 3.5)))), h: 0, ease: true });
     const tW = tc + .5; TL.events.push({ t: tW, type: 'whistle' });
     signalRestart(TL, ref, R, tW + .3, P);
@@ -1029,8 +1040,7 @@ function buildFoul(a, P, R) {
   }
   // düdük çalınan faul
   victimReact(att, reactKind(C, dirK, point), tc, r, rn, P, spdK);
-  if (stay) att.poses.push([tc + 1.3, reactKind(C, dirK, point) === 'head' ? 'down' : LEGC.includes(C) ? 'downAnkle' : 'down', .7]);
-  else att.poses.push([tc + 2.6, 'stand', .6]);
+  victimAfter(att, stay ? tc + 1.75 : tc + 2.1, stay, LEGC.includes(C));
   if (ballMode === 'carry') TL.ball.push({ t0: tc, t1: tc + 1.6, a: 'hold', b: T3(clampP(add(P, mul(r, 5.5)))), h: 0, ease: true });
   let tW = tc + .45;
   if (a.adv === 'failed') { ref.poses.push([tc + .3, 'refAdv']); TL.cap.push([tc + .3, 'Hakem avantaj işareti veriyor…']); tW = tc + 2.0; TL.cap.push([tW - .1, '…avantaj gerçekleşmedi, hakem ilk ihlale dönüyor']); }
@@ -1052,7 +1062,7 @@ const HB_ARM = {
 const HB_SIT = {
   stand: { run: 0, y: -.04, kL: .22, kR: .22, sx: .1 },
   block: { run: 0, y: -.2, lL: -.4, kL: .75, lR: .3, kR: .35, bL: .12, bR: -.12, sx: .22, sy: -.3, hx: .1 },
-  jump: { run: 0, y: .45, lL: -.25, kL: 1.0, lR: -.1, kR: .75, sx: .12, hx: -.3 },
+  jump: { run: 0, y: .45, lL: -.25, kL: 1.0, lR: -.1, kR: .75, fL: .4, fR: .4, sx: .12, hx: -.3, gnd: 0 },
   turn: { run: 0, y: -.12, kL: .35, kR: .35, sx: .45, hx: .25 },
   slide: { run: 0, y: -.55, h: .04, tx: -.9, sx: .6, hx: .3, lL: -.55, kL: 1.1, lR: -1.35, kR: .2 },
 };
@@ -1360,90 +1370,96 @@ function buildTL(R) {
 }
 
 /* ============================== pozlar ============================== */
-/* tx/tz: tüm vücudun ayak hizasından öne/yana devrilmesi · h: yerden yükseklik · sx/sy/sz: gövde (bel) eğilme/dönme/yana eğilme · hx/hy: baş
-   l/b/k: kalça öne-arkaya / yana açılma / diz · f/g: ayak bileği bükülme / dönme · a*x/a*z/e: omuz ve dirsek */
-const P0 = { tx: 0, tz: 0, y: 0, h: 0, roll: 0, sx: 0, sy: 0, sz: 0, hx: 0, hy: 0, lL: 0, lR: 0, bL: 0, bR: 0, kL: .06, kR: .06, fL: 0, fR: 0, gL: 0, gR: 0, aLx: 0, aLz: .12, aRx: 0, aRz: -.12, eL: -.2, eR: -.2, run: 1 };
+/* tx/tz: tüm vücudun ayak hizasından öne/yana devrilmesi · y: kalça yüksekliği · roll: vücudun boy ekseni etrafında dönmesi
+   sx/sy/sz: gövde (bel) eğilme/dönme/yana eğilme · hx/hy: baş · l/b/k: kalça öne-arkaya / yana açılma / diz · f/g: ayak bileği bükülme / dönme
+   a*x/a*z/e: omuz ve dirsek · run: koşu döngüsünün karışma oranı · gnd: vücudun en alttaki noktasını zemine oturtma (0 = havada kalabilir)
+   lk: başın topa dönmesi · fl: dengeyi kaybederken kolların çırpınması */
+const P0 = { tx: 0, tz: 0, y: 0, h: 0, roll: 0, sx: 0, sy: 0, sz: 0, hx: 0, hy: 0, lL: 0, lR: 0, bL: 0, bR: 0, kL: .06, kR: .06, fL: 0, fR: 0, gL: 0, gR: 0, aLx: 0, aLz: .12, aRx: 0, aRz: -.12, eL: -.2, eR: -.2, run: 1, gnd: 1, lk: 1, fl: 0 };
 const POSES = {
-  run: {}, stand: {},
-  fall: { tx: 1.42, lL: .1, lR: -.2, aLx: -2.7, aLz: .3, aRx: -2.7, aRz: -.3, run: 0 },
-  stumble: { tx: .38, aLz: .9, aRz: -.9, run: 1 },
-  slide: { tx: -1.05, lR: -1.25, lL: -.35, aLx: .5, aLz: .5, aRx: -.3, aRz: -.6, run: 0 },
-  studs: { tx: -.95, lR: -1.55, lL: -1.2, aLx: .6, aLz: .6, aRz: -.8, run: 0 },
-  push: { tx: .25, aLx: -1.45, aLz: .15, aRx: -1.45, aRz: -.15, run: 1 },
-  hold: { tx: -.14, aRx: -1.35, aRz: .2, aLx: -.3, run: 1 },
+  run: {},
+  // atletik duruş: dizler hafif bükük, ağırlık ayak önünde
+  stand: { lL: -.05, lR: -.03, kL: .14, kR: .1, fL: -.09, fR: -.07, sx: .04, aLz: .15, aRz: -.15, eL: -.32, eR: -.28 },
+  gkReady: { lL: -.42, lR: -.42, bL: .13, bR: -.13, kL: .8, kR: .8, fL: -.38, fR: -.38, sx: .36, hx: -.32, aLx: -.45, aLz: .5, eL: -.75, aRx: -.45, aRz: -.5, eR: -.75 },
+  fall: { tx: 1.42, lL: .1, lR: -.2, kL: .25, kR: .45, aLx: -2.7, aLz: .3, aRx: -2.7, aRz: -.3, eL: -.25, eR: -.25, run: 0, lk: 0 },
+  stumble: { tx: .26, sx: .28, hx: -.4, aLx: -.55, aLz: .95, aRx: .35, aRz: -.9, eL: -.5, eR: -.4, run: 1, fl: .55 },
+  slide: { tx: -1.05, lR: -1.25, lL: -.35, kR: .05, kL: 1.6, aLx: .5, aLz: .5, aRx: -.3, aRz: -.6, eL: -.2, eR: -.5, run: 0 },
+  studs: { tx: -.95, lR: -1.55, lL: -1.2, kR: 0, kL: .15, aLx: .6, aLz: .6, aRz: -.8, eL: -.2, run: 0 },
+  push: { tx: .25, aLx: -1.45, aLz: .15, aRx: -1.45, aRz: -.15, eL: -.05, eR: -.05, run: 1 },
+  hold: { tx: -.14, aRx: -1.35, aRz: .2, aLx: -.3, eR: -.15, run: 1 },
   charge: { tx: .12, tz: .25, aLz: .35, run: 1 },
-  jump: { y: .45, lL: -.6, lR: -.3, aLz: .9, aRz: -.9, run: 0 },
-  strike: { aRx: -.6, aRz: -1.7, tz: -.1, run: 1 },
-  kick: { tx: -.12, lR: -1.35, lL: .25, aLz: .6, aRz: -.5, run: 0 },
-  armSide: { aLz: 1.4, aRz: -1.4, run: 1 },
-  armUp: { aLz: 2.7, aRz: -.4, y: .25, lL: -.3, lR: -.2, run: 0 },
-  armReach: { aLx: -.9, aLz: 1.1, run: 1 },
-  support: { tx: -.85, lL: -.7, lR: -.9, aLx: .95, aLz: .35, aRx: .95, aRz: -.35, run: 0 },
-  gkHold: { aLx: -1.15, aLz: -.22, aRx: -1.15, aRz: .22, run: 1 },
-  gkDiveL: { tz: -1.25, y: .35, aLz: 2.8, aRz: -2.2, lL: -.2, run: 0 },
-  gkDiveR: { tz: 1.25, y: .35, aLz: 2.2, aRz: -2.8, lR: -.2, run: 0 },
-  throwIn: { aLx: -2.95, aRx: -2.95, aLz: -.1, aRz: .1, run: 0 },
-  refPoint: { aRx: -1.55, aRz: 0, run: 0 },
-  refAdv: { aLx: -1.35, aLz: -.25, aRx: -1.35, aRz: .25, run: 1 },
-  refUp: { aRz: -2.95, run: 0 },
-  arFlag: { aRz: -2.95, run: 0 },
-  arPoint: { aRx: -1.2, aRz: -.6, run: 0 },
-};
-// diz (k) ve dirsek (e) açıları
-Object.assign(POSES.fall, { kL: .25, kR: .45, eL: -.25, eR: -.25 });
-Object.assign(POSES.stumble, { kL: .55, kR: .35, eL: -.4, eR: -.4 });
-Object.assign(POSES.slide, { kR: .05, kL: 1.6, eL: -.2, eR: -.5 });
-Object.assign(POSES.studs, { kR: 0, kL: .15, eL: -.2 });
-Object.assign(POSES.kick, { kR: .12, kL: .3, eL: -.5, eR: -.5 });
-Object.assign(POSES.push, { eL: -.05, eR: -.05 });
-Object.assign(POSES.hold, { eR: -.15 });
-Object.assign(POSES.jump, { kL: 1.1, kR: .8 });
-Object.assign(POSES.strike, { eR: -.3 });
-Object.assign(POSES.armSide, { eL: -.05, eR: -.05 });
-Object.assign(POSES.armUp, { eL: -.1, kL: .5, kR: .3 });
-Object.assign(POSES.armReach, { eL: -.1 });
-Object.assign(POSES.support, { eL: 0, eR: 0, kL: .9, kR: .6 });
-Object.assign(POSES.gkHold, { aLx: -.55, aRx: -.55, eL: -1.05, eR: -1.05 });
-Object.assign(POSES.gkDiveL, { eL: -.1, eR: -.1, kL: .3 });
-Object.assign(POSES.gkDiveR, { eL: -.1, eR: -.1, kR: .3 });
-Object.assign(POSES.throwIn, { eL: -1.1, eR: -1.1 });
-for (const k of ['refPoint', 'refUp', 'arFlag', 'arPoint']) Object.assign(POSES[k], { eR: 0 });
-Object.assign(POSES.refAdv, { eL: -.1, eR: -.1 });
-POSES.kickPrep = { tx: -.06, lR: .75, kR: 1.5, lL: -.12, kL: .3, aLz: .75, aRz: -.55, eL: -.4, eR: -.4, run: 0 };
-POSES.down = { tx: 1.45, roll: 2.75, lL: -1.05, kL: 1.65, lR: -.25, kR: .3, aLx: -1.15, aLz: .1, eL: -.9, aRx: -1.0, aRz: -.1, eR: -1.0, run: 0 };
-POSES.sit = { y: -.58, tx: -.3, lL: -1.45, kL: .35, lR: -1.5, kR: .15, aLx: .75, aLz: .35, eL: 0, aRx: .75, aRz: -.35, eR: 0, run: 0 };
-POSES.down.h = .13; POSES.fall.h = .1;
-Object.assign(POSES, {
-  // savunmacı: müdahale pozları (temas eden uzuv ayrıca ters kinematikle hedefe götürülür)
-  slideIn: { y: -.42, tx: -.55, sx: .42, hx: .3, lL: -.62, kL: 1.3, lR: -.62, kR: 1.3, aLx: .35, aLz: 1.0, eL: -.1, aRx: -.5, aRz: -.7, eR: -.6, run: 0 },
-  slideGround: { y: -.6, h: .05, tx: -.95, sx: .62, hx: .35, lL: -.5, kL: 1.15, lR: -.5, kR: 1.15, aLx: .55, aLz: .85, eL: 0, aRx: -.2, aRz: -.6, eR: -.4, run: 0 },
-  reachLeg: { y: -.16, tx: -.16, sx: .24, hx: .2, lL: .05, kL: .45, lR: .05, kR: .45, aLz: .95, aRz: -.95, aLx: -.2, aRx: -.2, eL: -.25, eR: -.25, run: 0 },
-  tripLeg: { y: -.2, tx: -.08, sx: .28, hx: .15, lL: 0, kL: .55, lR: 0, kR: .55, aLz: .7, aRz: -.7, aLx: -.3, aRx: -.3, run: .3 },
-  stampDown: { y: -.06, tx: .06, sx: .14, hx: .2, aLz: .65, aRz: -.65, run: .25 },
-  pushArms: { tx: .12, sx: .32, run: .75 },
-  holdPull: { tx: -.06, sx: -.18, hx: .1, run: .7 },
-  chargeR: { tz: .12, sz: .32, sx: .12, aRz: -.35, aLz: .2, run: .8 },
-  chargeL: { tz: -.12, sz: -.32, sx: .12, aLz: .35, aRz: -.2, run: .8 },
-  jumpInto: { y: .42, tx: .25, sx: .3, lL: -1.05, kL: 1.6, lR: .15, kR: .7, aLx: -.6, aLz: .5, aRx: -.6, aRz: -.5, run: 0 },
+  jump: { y: .45, lL: -.6, lR: -.3, kL: 1.1, kR: .8, fL: .4, fR: .4, aLz: .9, aRz: -.9, run: 0, gnd: 0 },
+  strike: { aRx: -.6, aRz: -1.7, tz: -.1, eR: -.3, run: 1 },
+  kick: { tx: -.1, sx: -.12, hx: .25, lR: -1.3, kR: .1, fR: .65, lL: .18, kL: .38, fL: -.46, aLx: -.35, aLz: .75, eL: -.5, aRx: .45, aRz: -.55, eR: -.5, run: 0 },
+  kickPrep: { tx: -.05, sx: .08, lR: .72, kR: 1.55, fR: .55, lL: -.15, kL: .32, fL: -.17, aLx: -.2, aLz: .8, eL: -.4, aRx: .3, aRz: -.6, eR: -.45, run: 0 },
+  armSide: { aLz: 1.4, aRz: -1.4, eL: -.05, eR: -.05, run: 1 },
+  armUp: { aLz: 2.7, aRz: -.4, y: .25, lL: -.3, lR: -.2, eL: -.1, kL: .5, kR: .3, run: 0, gnd: 0 },
+  armReach: { aLx: -.9, aLz: 1.1, eL: -.1, run: 1 },
+  support: { tx: -.85, lL: -.7, lR: -.9, kL: .9, kR: .6, aLx: .95, aLz: .35, aRx: .95, aRz: -.35, eL: 0, eR: 0, run: 0, lk: .5 },
+  gkHold: { aLx: -.55, aLz: -.22, aRx: -.55, aRz: .22, eL: -1.05, eR: -1.05, kL: .18, kR: .18, fL: -.18, fR: -.18, sx: .08, run: 1 },
+  gkDiveL: { tz: -1.25, y: .35, aLz: 2.8, aRz: -2.2, lL: -.2, kL: .3, eL: -.1, eR: -.1, run: 0, gnd: 0, lk: .4 },
+  gkDiveR: { tz: 1.25, y: .35, aLz: 2.2, aRz: -2.8, lR: -.2, kR: .3, eL: -.1, eR: -.1, run: 0, gnd: 0, lk: .4 },
+  throwIn: { aLx: -2.95, aRx: -2.95, aLz: -.1, aRz: .1, eL: -1.1, eR: -1.1, sx: -.15, run: 0 },
+  refPoint: { aRx: -1.55, aRz: 0, eR: 0, run: 0 },
+  refAdv: { aLx: -1.35, aLz: -.25, aRx: -1.35, aRz: .25, eL: -.1, eR: -.1, run: 1 },
+  refUp: { aRz: -2.95, eR: 0, run: 0 },
+  arFlag: { aRz: -2.95, eR: 0, run: 0 },
+  arPoint: { aRx: -1.2, aRz: -.6, eR: 0, run: 0 },
+  sit: { y: -.58, tx: -.3, sx: .2, hx: .1, lL: -1.45, kL: .35, lR: -1.5, kR: .15, aLx: .75, aLz: .35, eL: 0, aRx: .75, aRz: -.35, eR: 0, run: 0, lk: .6 },
+  down: { tx: 1.45, roll: 2.75, sx: .25, hx: .3, lL: -1.05, kL: 1.65, lR: -.25, kR: .3, aLx: -1.15, aLz: .1, eL: -.9, aRx: -1.0, aRz: -.1, eR: -1.0, run: 0, lk: 0 },
+
+  /* ---- savunmacı: müdahale pozları (temas eden uzuv ayrıca ters kinematikle hedefe götürülür) ---- */
+  // kayarak müdahale: destek bacağı bükülür, gövde geriye yaslanır, kalça ve uyluk yanından zemine iner
+  slideIn: { tx: -.45, roll: -.35, sx: .3, sz: .15, hx: .2, lL: -.5, kL: 1.4, fL: -.2, lR: -.75, kR: .3, fR: .2, aLx: .35, aLz: .95, eL: -.25, aRx: -.45, aRz: -.85, eR: -.55, run: 0, gnd: .75, lk: .7 },
+  // sol kalça ve uyluk zeminde, öndeki bacak uzanmış, arkadaki altta bükülü
+  slideGround: { tx: -1.0, roll: -.9, sx: .35, sz: .45, hx: .3, lL: -.65, kL: 1.85, bL: .15, fL: .3, lR: -.5, kR: .05, fR: .25, aLx: .7, aLz: .55, eL: -.15, aRx: -.35, aRz: -.95, eR: -.6, run: 0, lk: .7 },
+  slideEnd: { tx: -.92, roll: -.75, sx: .48, sz: .45, hx: .28, lL: -.6, kL: 1.8, bL: .12, fL: .3, lR: -.45, kR: .2, fR: .2, aLx: .85, aLz: .45, eL: -.05, aRx: .25, aRz: -.6, eR: -.45, run: 0, lk: .8 },
+  reachLeg: { tx: -.12, sx: .24, hx: .22, lL: -.12, kL: .72, fL: -.45, lR: -.4, kR: .2, aLx: -.25, aLz: .95, eL: -.4, aRx: .25, aRz: -.95, eR: -.4, run: 0 },
+  tripLeg: { tx: -.06, sx: .3, hx: .15, lL: -.05, kL: .6, fL: -.45, lR: 0, kR: .55, aLz: .75, aRz: -.75, aLx: -.3, aRx: -.3, eL: -.4, eR: -.4, run: .3 },
+  stampDown: { tx: .06, sx: .16, hx: .22, kL: .3, fL: -.25, aLz: .65, aRz: -.65, eL: -.4, eR: -.4, run: .25 },
+  pushArms: { tx: .12, sx: .34, hx: -.1, run: .75 },
+  holdPull: { tx: -.08, sx: -.16, hx: .1, kL: .3, kR: .3, run: .7 },
+  chargeR: { tz: .12, sz: .32, sx: .14, aRz: -.35, aLz: .2, eL: -.7, eR: -.6, run: .8 },
+  chargeL: { tz: -.12, sz: -.32, sx: .14, aLz: .35, aRz: -.2, eL: -.6, eR: -.7, run: .8 },
+  jumpInto: { y: .42, tx: .25, sx: .3, lL: -1.05, kL: 1.6, lR: .15, kR: .7, fL: .3, fR: .5, aLx: -.6, aLz: .5, aRx: -.6, aRz: -.5, run: 0, gnd: 0 },
   elbowR: { sy: .55, sx: .08, aRx: -1.2, aRz: -1.25, eR: -2.3, run: .4 },
   elbowL: { sy: -.55, sx: .08, aLx: -1.2, aLz: 1.25, eL: -2.3, run: .4 },
-  pullOut: { y: -.1, tx: -.12, sx: .1, lL: .1, kL: .5, lR: .1, kR: .5, aLz: .8, aRz: -.8, run: .2 },
-  // hücumcu: temasa tepki
-  hitLeg: { tx: .18, sx: .25, hx: -.15, lR: .45, kR: 1.0, kL: .35, aLx: -.5, aLz: .95, aRx: -.4, aRz: -.95, eL: -.5, eR: -.5, run: 0 },
-  tripFwd: { y: -.1, tx: .72, sx: .35, hx: -.6, lL: -1.0, kL: .6, lR: -.2, kR: .85, aLx: -1.5, aLz: .35, eL: -.35, aRx: -1.45, aRz: -.35, eR: -.35, run: 0 },
-  lieFwd: { h: .13, tx: 1.5, hx: -.55, hy: .3, lL: .05, kL: .35, lR: .12, kR: .75, aLx: -2.7, aLz: .5, eL: -1.0, aRx: -2.5, aRz: -.55, eR: -.8, run: 0 },
-  sweptBack: { y: -.12, tx: -.45, sx: -.3, hx: .3, lL: .15, kL: .7, lR: -1.05, kR: .25, aLx: .2, aLz: 1.25, aRx: .2, aRz: -1.25, eL: -.3, eR: -.3, run: 0 },
-  lieBack: { h: .13, tx: -1.5, hx: .45, lL: -.25, kL: .8, lR: -.45, kR: .25, aLx: .1, aLz: 1.35, aRx: .1, aRz: -1.35, eL: -.4, eR: -.4, run: 0 },
-  pulledBack: { tx: -.04, sx: -.42, sy: -.35, hx: .25, hy: -.4, aRx: .95, aRz: -.35, eR: -.35, aLx: -1.0, aLz: .65, eL: -.5, run: .55 },
-  pushedFwd: { tx: .35, sx: .7, hx: -.55, aLx: .85, aLz: .55, aRx: .85, aRz: -.55, eL: -.2, eR: -.2, run: .85 },
-  fallL: { y: -.1, tz: -.75, sz: -.25, tx: .15, lL: .2, kL: .6, lR: -.4, kR: .3, aLz: 1.55, aRz: -.8, eL: -.2, run: 0 },
-  lieL: { h: .14, tz: -1.5, tx: .1, sz: -.1, lL: .1, kL: .5, lR: -.3, kR: .9, aLz: 2.0, aRz: -.5, aRx: -.8, eR: -.8, run: 0 },
-  headHit: { tx: -.06, sx: -.48, hx: .7, sy: .25, aLx: -1.75, aLz: -.25, eL: -2.35, aRx: -1.75, aRz: .25, eR: -2.35, run: .3 },
-  kneelFace: { y: -.45, tx: .05, sx: .5, hx: -.25, lL: -.05, kL: 1.6, lR: .05, kR: 1.6, aLx: -1.6, aLz: -.25, eL: -2.4, aRx: -1.6, aRz: .25, eR: -2.4, run: 0 },
-  dive: { y: .12, h: .18, tx: .6, sx: .38, hx: -.5, lL: .6, kL: .9, lR: .45, kR: .45, aLx: -2.6, aLz: .45, eL: -.15, aRx: -2.6, aRz: -.45, eR: -.15, run: 0 },
-  hop: { y: .06, tx: .08, sx: .15, hx: -.2, lR: -.45, kR: 1.75, aLz: .75, aRz: -.75, aLx: -.3, aRx: -.3, eL: -.4, eR: -.4, run: 0 },
-  downAnkle: { h: .13, tx: 1.45, roll: 2.7, hx: .5, lL: -.2, kL: .3, lR: -1.55, kR: 2.1, aLx: -1.25, aLz: .05, eL: -1.0, aRx: -1.15, aRz: -.05, eR: -1.05, run: 0 },
-});
+  pullOut: { tx: -.1, sx: .12, lL: .1, kL: .5, fL: -.55, lR: .1, kR: .5, fR: -.55, aLz: .8, aRz: -.8, eL: -.4, eR: -.4, run: .2 },
+  // yerden kalkış: tek dizin üstünde, öndeki ayak basılı
+  kneelUp: { tx: .04, sx: .32, hx: -.12, lL: -1.5, kL: 1.58, fL: -.08, lR: .06, kR: 1.6, fR: .75, aLx: -.75, aLz: .15, eL: -.9, aRx: .1, aRz: -.35, eR: -.3, run: 0, lk: .8 },
+  allFours: { tx: 1.08, sx: .22, hx: -.65, lL: -.98, kL: 1.62, fL: .5, lR: -.92, kR: 1.68, fR: .5, aLx: -1.32, aLz: .18, eL: -.12, aRx: -1.32, aRz: -.18, eR: -.12, run: 0, lk: .3 },
+
+  /* ---- hücumcu: temasa tepki ---- */
+  // vurulan bacak savrulur, diğer bacak dengeyi kurtarmaya çalışır
+  hitLeg: { tx: .14, sx: .3, hx: -.25, lR: .55, kR: 1.15, fR: .5, lL: -.55, kL: .55, aLx: -.65, aLz: .95, aRx: -.25, aRz: -1.05, eL: -.5, eR: -.5, run: 0, gnd: .5, fl: .35 },
+  tripFwd: { tx: .58, sx: .45, hx: -.8, lL: -.85, kL: .85, fL: -.1, lR: .4, kR: 1.35, fR: .6, aLx: -1.55, aLz: .38, eL: -.28, aRx: -1.45, aRz: -.38, eR: -.3, run: 0, gnd: .55, lk: .3, fl: .2 },
+  // eller ve dizler yere değiyor
+  catchFall: { tx: 1.04, sx: .38, hx: -.9, lL: -.3, kL: 1.25, fL: .7, lR: -.12, kR: 1.5, fR: .7, aLx: -1.18, aLz: .32, eL: -.22, aRx: -1.18, aRz: -.32, eR: -.22, run: 0, lk: 0 },
+  lieFwd: { tx: 1.5, sx: .05, hx: -.55, hy: .3, lL: .05, kL: .15, fL: .9, lR: .1, kR: .45, fR: .9, aLx: -2.4, aLz: .55, eL: -1.3, aRx: -2.2, aRz: -.6, eR: -1.1, run: 0, lk: 0 },
+  // yan dönüp bacağı tutuyor: dizler karna çekili, eller bileğe
+  rollSide: { tx: 1.5, roll: 1.45, sx: .45, hx: .3, lL: -1.05, kL: 1.6, fL: .5, lR: -.95, kR: 1.9, fR: .6, aLx: -.75, aLz: .1, eL: -.35, aRx: -.85, aRz: -.15, eR: -.25, run: 0, lk: 0 },
+  downAnkle: { tx: 1.45, roll: 2.75, sx: .6, hx: .55, lL: -1.25, kL: 1.65, fL: .3, lR: -1.45, kR: 2.05, fR: .5, aLx: -1.35, aLz: .08, eL: -.95, aRx: -1.25, aRz: -.05, eR: -1.0, run: 0, lk: 0 },
+  sweptBack: { tx: -.42, sx: -.22, hx: .38, lL: .12, kL: .75, fL: -.3, lR: -1.05, kR: .25, fR: .3, aLx: .25, aLz: 1.2, aRx: .25, aRz: -1.2, eL: -.3, eR: -.3, run: 0, gnd: .55, fl: .35 },
+  // geriye düşerken eller arkada yere iniyor
+  catchBack: { tx: -.92, sx: .32, hx: .3, lL: -1.1, kL: .95, fL: .2, lR: -1.2, kR: .65, fR: .3, aLx: .95, aLz: .45, eL: -.15, aRx: .95, aRz: -.45, eR: -.15, run: 0, lk: .2 },
+  lieBack: { tx: -1.5, sx: .1, hx: .45, lL: -.3, kL: .85, fL: .3, lR: -.5, kR: .3, fR: .4, aLx: .1, aLz: 1.35, aRx: .1, aRz: -1.35, eL: -.4, eR: -.4, run: 0, lk: 0 },
+  rollSideB: { tx: -1.5, roll: -1.45, sx: .45, hx: .3, lL: -1.05, kL: 1.7, fL: .4, lR: -.9, kR: 1.95, fR: .5, aLx: -1.0, aLz: .1, eL: -.8, aRx: -1.15, aRz: -.2, eR: -.55, run: 0, lk: 0 },
+  downB: { tx: -1.45, sx: .55, hx: .5, lL: -1.3, kL: 1.6, fL: .3, lR: -1.45, kR: 2.0, fR: .5, aLx: -1.35, aLz: .1, eL: -.95, aRx: -1.25, aRz: -.08, eR: -1.0, run: 0, lk: 0 },
+  pulledBack: { tx: -.04, sx: -.42, sy: -.35, hx: .25, hy: -.4, aRx: .95, aRz: -.35, eR: -.35, aLx: -1.0, aLz: .65, eL: -.5, run: .55, fl: .15 },
+  pushedFwd: { tx: .3, sx: .55, hx: -.6, aLx: .6, aLz: .75, aRx: .6, aRz: -.75, eL: -.3, eR: -.3, run: .85, fl: .45 },
+  fallL: { tz: -.6, sz: -.3, sx: .12, tx: .12, lL: .22, kL: .6, lR: -.5, kR: .45, aLz: 1.45, aLx: -.4, aRz: -1.05, eL: -.2, eR: -.35, run: 0, gnd: .55, fl: .3 },
+  lieL: { tz: -1.5, tx: .1, sz: -.1, sx: .15, lL: -.3, kL: .8, lR: -.5, kR: 1.1, aLz: 2.0, aRz: -.4, aRx: -.8, eL: -.2, eR: -.8, run: 0, lk: 0 },
+  lieLHurt: { tz: -1.5, tx: .1, sx: .5, hx: .3, lL: -1.0, kL: 1.6, lR: -1.1, kR: 1.85, aLz: 1.6, aLx: -.6, eL: -.7, aRx: -1.2, aRz: -.3, eR: -.7, run: 0, lk: 0 },
+  headHit: { tx: -.08, sx: -.5, hx: .75, sy: .25, kL: .3, kR: .3, aLx: -1.75, aLz: -.25, eL: -2.35, aRx: -1.75, aRz: .25, eR: -2.35, run: .3, lk: 0 },
+  kneelFace: { tx: .05, sx: .5, hx: -.25, lL: -.05, kL: 1.6, fL: .9, lR: .05, kR: 1.6, fR: .9, aLx: -1.6, aLz: -.25, eL: -2.4, aRx: -1.6, aRz: .25, eR: -2.4, run: 0, lk: 0 },
+  lieFace: { tx: 1.5, roll: 1.4, sx: .5, hx: .4, lL: -1.0, kL: 1.5, lR: -.8, kR: 1.6, aLx: -1.7, aLz: -.3, eL: -2.3, aRx: -1.7, aRz: .3, eR: -2.3, run: 0, lk: 0 },
+  // simülasyon: kollar havada, gövde öne atılıyor
+  dive: { y: .12, tx: .62, sx: .38, hx: -.55, lL: .6, kL: .9, lR: .45, kR: .5, fL: .6, fR: .6, aLx: -2.6, aLz: .45, eL: -.15, aRx: -2.6, aRz: -.45, eR: -.15, run: 0, gnd: 0, lk: 0 },
+  hop: { y: .06, tx: .08, sx: .2, hx: -.2, lR: -.45, kR: 1.75, fR: .5, kL: .25, fL: -.2, aLz: .75, aRz: -.75, aLx: -.3, aRx: -.4, eL: -.4, eR: -.6, run: 0, gnd: .8, fl: .3 },
+  // yerde oturmuş, basılan ayağını iki eliyle tutuyor
+  sitHold: { tx: -.55, sx: .72, hx: .3, lL: -1.0, kL: .15, fL: .3, lR: -1.54, kR: 1.2, fR: .2, aLx: -1.15, aLz: .2, eL: -.35, aRx: -1.25, aRz: -.1, eR: -.3, run: 0, lk: 0 },
+};
+// eski yükseklik ayarları zemine oturtma ile gereksizleşti, ama geçişlerde zararsız
+POSES.down.h = .13; POSES.fall.h = .1;
 
 /* yumuşatılmış yol örnekleri: ani hız değişimlerini doğal ivmeye çevirir */
 const SDT = 1 / 50;
@@ -1461,7 +1477,8 @@ function posAt(ac, t) { return ac.S ? V(sAt(ac.S, t, ac.S.X), sAt(ac.S, t, ac.S.
 function poseAt(ac, t) {
   const ps = ac.poses; let i = -1;
   for (let k = 0; k < ps.length; k++) if (ps[k][0] <= t) i = k;
-  const full = nm => Object.assign({}, P0, POSES[nm]);
+  const gk = (ac.kind === 'gk' || ac.kind === 'gkA') && !ac.holding;
+  const full = nm => Object.assign({}, P0, POSES[gk && nm === 'stand' ? 'gkReady' : nm]);
   let val = full(ps[Math.max(0, Math.min(i, 0))][1]);
   if (i <= 0) return val;
   for (let k = 1; k <= i; k++) {
@@ -1744,20 +1761,22 @@ function bodyGeo(bd) {
   const pS = prof([[.81, 0], [.822, .5], [.85, .78], [.89, .94], [.95, 1], [1.02, .99], [1.08, .955], [1.125, .945]]);
   add(tube(24, 14, .81, 1.125, (y, th, c, f) => { const s = pS(y); return [.176 * s * Math.sqrt(bd.w), .128 * s * (1 + .06 * gs(y, .93, .06) * pos0(-f))]; }), 3, () => ({ [B.body]: 1 }));
   // gövde: bel, göğüs, sırt kasları, trapez eğimi
-  const tX = prof([[.875, .2], [.95, .19], [1.05, .174], [1.15, .172], [1.25, .181], [1.33, .194], [1.41, .206], [1.475, .212], [1.52, .204], [1.555, .182], [1.585, .14], [1.61, .095], [1.632, .074]]);
-  const tZ = prof([[.875, .15], [.95, .146], [1.05, .132], [1.15, .127], [1.25, .132], [1.33, .14], [1.41, .136], [1.475, .126], [1.52, .114], [1.555, .1], [1.585, .086], [1.61, .074], [1.632, .066]]);
+  // atletik V gövde: dar bel, geniş sırt (latissimus), dolgun göğüs, omuz başına doğru kalkan trapez
+  const tX = prof([[.875, .198], [.95, .186], [1.05, .168], [1.15, .166], [1.25, .182], [1.33, .202], [1.41, .217], [1.475, .224], [1.52, .216], [1.555, .194], [1.585, .152], [1.61, .104], [1.632, .08]]);
+  const tZ = prof([[.875, .148], [.95, .144], [1.05, .13], [1.15, .127], [1.25, .135], [1.33, .146], [1.41, .144], [1.475, .132], [1.52, .118], [1.555, .102], [1.585, .088], [1.61, .078], [1.632, .07]]);
   const tC = prof([[.875, 0], [1.2, 0], [1.33, .008], [1.45, 0], [1.55, -.012], [1.632, -.004]]);
-  add(tube(32, 34, .875, 1.632, (y, th, c, f) => { const k = 1 + .05 * bd.m * gs(y, 1.37, .06) * pos0(f) * pos0(f) + .04 * gs(y, 1.38, .08) * pos0(-f) * Math.abs(c) - .03 * gs(y, 1.25, .22) * Math.pow(pos0(-f), 8); return [tX(y) * bd.w * k, tZ(y) * (.5 + .5 * bd.w) * k]; }, 0, tC), 1,
+  add(tube(32, 34, .875, 1.632, (y, th, c, f) => { const k = 1 + .075 * bd.m * gs(y, 1.37, .06) * pos0(f) * pos0(f) + .05 * gs(y, 1.38, .08) * pos0(-f) * Math.abs(c) - .03 * gs(y, 1.25, .22) * Math.pow(pos0(-f), 8) + .03 * gs(y, 1.56, .05) * pos0(-f) * (1 - Math.abs(c)); return [tX(y) * bd.w * k, tZ(y) * (.5 + .5 * bd.w) * k]; }, 0, tC), 1,
     (x, y) => { const o = {}, ts = st(.98, 1.13, y); let sp = ts; o[B.body] = 1 - ts; const a = st(.13, .21, Math.abs(x)) * st(1.37, 1.49, y) * .5; if (a > 0) { o[x > 0 ? B.armL : B.armR] = a * sp; sp *= 1 - a; } const nk = st(1.575, 1.62, y) * .6; if (nk > 0) { o[B.neck] = nk * sp; sp *= 1 - nk; } o[B.spine] = sp; return o; });
-  const nR = prof([[1.56, .07], [1.6, .064], [1.66, .06], [1.74, .057]]);
+  const nR = prof([[1.56, .082], [1.6, .073], [1.66, .067], [1.74, .063]]);
   add(tube(16, 8, 1.56, 1.74, (y, th, c, f) => { const r = nR(y) * Math.sqrt(bd.m); return [r, r * .95 * (1 + .04 * pos0(f))]; }, 0, .002), 0, (x, y) => { const t = st(1.56, 1.63, y); return { [B.spine]: 1 - t, [B.neck]: t }; });
   // kollar: kol ağzı + omuz başı (forma), pazı/arka kol, ön kol (ten)
-  const slR = prof([[1.325, .061], [1.4, .062], [1.47, .063], [1.515, .061], [1.545, .055], [1.567, .042], [1.58, .024], [1.586, 0]]);
-  const aX = prof([[.925, .027], [.95, .029], [1, .034], [1.08, .041], [1.15, .046], [1.21, .044], [1.24, .043], [1.3, .046], [1.36, .049], [1.42, .05], [1.45, .05]]);
-  const aZ = prof([[.925, .034], [.95, .035], [1, .037], [1.08, .042], [1.15, .045], [1.21, .043], [1.24, .044], [1.3, .048], [1.36, .051], [1.42, .052], [1.45, .052]]);
+  // kol ağzı ve deltoid: omuz başı yuvarlak ve dolgun
+  const slR = prof([[1.325, .063], [1.4, .065], [1.47, .066], [1.515, .062], [1.54, .054], [1.558, .041], [1.57, .024], [1.575, 0]]);
+  const aX = prof([[.925, .027], [.95, .029], [1, .034], [1.08, .042], [1.15, .047], [1.21, .045], [1.24, .044], [1.3, .048], [1.36, .052], [1.42, .054], [1.45, .054]]);
+  const aZ = prof([[.925, .034], [.95, .035], [1, .037], [1.08, .043], [1.15, .046], [1.21, .044], [1.24, .045], [1.3, .05], [1.36, .055], [1.42, .056], [1.45, .056]]);
   for (const sg of [1, -1]) {
     const AR = sg > 0 ? B.armL : B.armR, EB = sg > 0 ? B.elbL : B.elbR, x0 = .25 * sg, mm = Math.pow(bd.m, .6);
-    add(tube(18, 14, 1.325, 1.586, (y, th, c) => { const r = slR(y) * Math.sqrt(bd.m) * (1 + .05 * pos0(c * sg) * gs(y, 1.5, .06)); return [r, r]; }, y => x0 - sg * .022 * st(1.42, 1.586, y)), 2, () => ({ [AR]: 1 }));
+    add(tube(18, 14, 1.325, 1.575, (y, th, c) => { const r = slR(y) * Math.sqrt(bd.m) * (1 + .04 * pos0(c * sg) * gs(y, 1.48, .06)); return [r, r]; }, y => x0 - sg * .03 * st(1.4, 1.575, y)), 2, () => ({ [AR]: 1 }));
     add(tube(16, 30, .925, 1.45, (y, th, c, f) => { const u = 1 + (mm - 1) * st(1.2, 1.3, y); const k = 1 + .09 * gs(y, 1.33, .05) * pos0(f) + .06 * gs(y, 1.37, .06) * pos0(-f) + .05 * gs(y, 1.13, .05) * pos0(.7 * f + .7 * c * sg); return [aX(y) * u * k, aZ(y) * u * k]; }, x0), 0,
       (x, y) => { const t = st(1.27, 1.19, y); return { [AR]: 1 - t, [EB]: t }; });
   }
@@ -1861,6 +1880,28 @@ function blobMesh() {
 /* --- formalar: gövde dokusu (yaka, yan panel, arma, sırtta isim + numara), kol, şort, tozluk --- */
 const KIT = { att: { trim: '#ffffff', dark: '#9b2a17', pat: 'pin', numc: '#ffffff', strim: '#d9472b' }, def: { trim: '#ffffff', dark: '#173a8f', pat: 'hoop', numc: '#ffffff', strim: '#ffffff' }, gk: { trim: '#1b1b1b', dark: '#b8961a', pat: 'geo', numc: '#1b1b1b', strim: '#e6c12a' }, gkA: { trim: '#111111', dark: '#1f8a50', pat: 'geo', numc: '#111111', strim: '#2fbf6f' }, ref: { trim: '#f2c230', dark: '#000000', pat: 'none', numc: '#f2c230', strim: '#f2c230' }, ar: { trim: '#f2c230', dark: '#000000', pat: 'none', numc: '#f2c230', strim: '#f2c230' } };
 const KITMAT = {};
+/* kumaş: yumuşak kıvrımlardan üretilen normal haritası (döşenebilir) + kumaş parlaması */
+let CLOTHN = null;
+function clothNormal() {
+  if (CLOTHN) return CLOTHN;
+  const W = 256, H = 256, h = new Float32Array(W * H);
+  const waves = [[3, 1, .5, .3], [-2, 3, .35, 1.7], [5, -2, .22, 2.9], [1, 6, .16, .8], [7, 4, .1, 4.1], [-6, 5, .09, 5.3], [11, -7, .05, .2], [-13, 9, .04, 2.2]];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let v = 0; const u = x / W * TAU, w = y / H * TAU;
+    for (const [a, b, amp, ph] of waves) v += amp * Math.pow(Math.abs(Math.sin((a * u + b * w) / 2 + ph)), 1.6);
+    h[y * W + x] = v;
+  }
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), img = g.createImageData(W, H), k = 2.2;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = (h[y * W + (x + 1) % W] - h[y * W + (x + W - 1) % W]) * k, dy = (h[((y + 1) % H) * W + x] - h[((y + H - 1) % H) * W + x]) * k;
+    const l = Math.hypot(dx, dy, 1), i = (y * W + x) * 4;
+    img.data[i] = (-dx / l * .5 + .5) * 255; img.data[i + 1] = (-dy / l * .5 + .5) * 255; img.data[i + 2] = (1 / l * .5 + .5) * 255; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  CLOTHN = new THREE.CanvasTexture(c); CLOTHN.wrapS = CLOTHN.wrapT = THREE.RepeatWrapping; CLOTHN.anisotropy = 4;
+  return CLOTHN;
+}
+const fabricMat = (map, rough, ns) => new THREE.MeshPhysicalMaterial({ map, roughness: rough, normalMap: clothNormal(), normalScale: new THREE.Vector2(ns, ns), sheen: .6, sheenRoughness: .55, sheenColor: new THREE.Color(0x9a9a9a) });
 function patternFill(g, K, W, H) {
   if (K.pat === 'pin') { g.fillStyle = 'rgba(0,0,0,.09)'; for (let x = 0; x < W; x += 14) g.fillRect(x, 0, 4, H); }
   else if (K.pat === 'hoop') { g.fillStyle = 'rgba(255,255,255,.06)'; for (let y = 30; y < H; y += 44) g.fillRect(0, y, W, 14); }
@@ -1886,7 +1927,7 @@ function shirtMat(kind, num, name) {
     if (name) { g.font = `600 25px ${FONT}`; try { g.letterSpacing = '2px'; } catch (e) { } g.fillStyle = K.numc; g.fillText(name, .25 * W, 90); try { g.letterSpacing = '0px'; } catch (e) { } }
     if (num) { g.font = `700 118px ${FONT}`; g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = K.dark; g.strokeText(String(num), .25 * W, name ? 186 : 170); g.fillStyle = K.numc; g.fillText(String(num), .25 * W, name ? 186 : 170); }
   });
-  return (KITMAT[key] = new THREE.MeshStandardMaterial({ map: tex, roughness: .78 }));
+  return (KITMAT[key] = fabricMat(tex, .78, .55));
 }
 function trimMat(kind, part) {
   const key = kind + '|' + part; if (KITMAT[key]) return KITMAT[key];
@@ -1896,7 +1937,7 @@ function trimMat(kind, part) {
     else if (part === 'shorts') { g.fillStyle = hex(C.shorts); g.fillRect(0, 0, W, H); g.fillStyle = K.strim; g.fillRect(0, H - 6, W, 6); }
     else { g.fillStyle = hex(C.socks); g.fillRect(0, 0, W, H); g.fillStyle = K.trim; g.fillRect(0, 4, W, 7); g.fillStyle = K.dark; g.fillRect(0, 13, W, 3); }
   });
-  return (KITMAT[key] = new THREE.MeshStandardMaterial({ map: tex, roughness: part === 'socks' ? .9 : .8 }));
+  return (KITMAT[key] = fabricMat(tex, part === 'socks' ? .9 : .8, part === 'socks' ? .25 : .45));
 }
 const SKINMAT = {};
 const skinMat = c => SKINMAT[c] || (SKINMAT[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .58 }));
@@ -1937,9 +1978,12 @@ function makePerson(kind, idx, num, look) {
     pt('shin' + s, knee, 0, -.25, .07); pt('calf' + s, knee, 0, -.2, -.07); pt('shinA' + s, knee, 0, -.22, .075);
     pt('ankle' + s, ank, sx > 0 ? -.045 : .045, .0, -.01); pt('heel' + s, ank, 0, -.03, -.085); pt('foot' + s, ank, 0, .012, .1);
     pt('sole' + s, ank, 0, -.095, .1); pt('toe' + s, ank, 0, -.03, .2); pt('side' + s, ank, sx > 0 ? -.058 : .058, -.035, .07);
+    pt('gToe' + s, ank, 0, -.09, .175); pt('gHeel' + s, ank, 0, -.09, -.065); pt('hipSide' + s, body, sx * 1.75, .9, 0);
   }
+  pt('seat', body, 0, .84, -.115);
   const spine = G(body, 0, 1.0, 0), neck = G(spine, 0, .6, 0);
-  const head = cast(new THREE.Mesh(headGeo(look), VCMAT)); head.position.set(0, .157, .012); neck.add(head);
+  // kafa vücuda göre biraz küçültülür (yetişkin sporcu oranı ~1/7,7)
+  const head = cast(new THREE.Mesh(headGeo(look), VCMAT)); head.position.set(0, .15, .014); head.scale.setScalar(.92); neck.add(head);
   const A = {};
   for (const [s, sx] of [['L', .25], ['R', -.25]]) {
     const arm = G(spine, sx, .53, 0), elb = G(arm, 0, -.3, 0), hand = G(elb, 0, -.33, 0);
@@ -1949,7 +1993,7 @@ function makePerson(kind, idx, num, look) {
     pt('back' + s, spine, sx * .45, .34, -.13); pt('chest' + s, spine, sx * .45, .34, .13);
   }
   pt('back', spine, 0, .3, -.135); pt('lowBack', spine, 0, .1, -.12); pt('chest', spine, 0, .32, .135); pt('shirt', spine, 0, .38, -.14); pt('shirtSide', spine, -.19, .33, -.07);
-  pt('head', neck, 0, .17, -.08); pt('face', neck, 0, .15, .11); pt('hip', body, 0, .95, 0);
+  pt('head', neck, 0, .17, -.08); pt('face', neck, 0, .15, .11); pt('hip', body, 0, .95, 0); pt('crown', neck, 0, .27, 0);
   const shirt = shirtMat(kind, num, look.back);
   const sk = cast(new THREE.SkinnedMesh(bodyGeo(bd), [skinMat(look.skin), shirt, trimMat(kind, 'sleeve'), trimMat(kind, 'shorts'), trimMat(kind, 'socks')]));
   sk.frustumCulled = false; body.add(sk);
@@ -1994,7 +2038,7 @@ function instantiate() {
     const num = RP ? RP.num : ac.kind === 'ref' || ac.kind === 'ar' ? 0 : ac.kind === 'gk' || ac.kind === 'gkA' ? 1 : ac.key ? (ac.kind === 'att' ? 9 : 4) : nums[ni++ % nums.length];
     const look = RP ? Object.assign({}, RP.look, { back: namesOn ? RP.back : '' }) : genLook(ac.kind, i + (ac.kind === 'att' ? 1 : 0));
     if (RP) { ac.player = RP.name; if (namesOn) ac.label = ac.label ? `${RP.short} · ${ac.label}` : RP.short; }
-    ac.obj = makePerson(ac.kind, i, num, look); worldGroup.add(ac.obj.root); byId[ac.id] = ac;
+    ac.obj = makePerson(ac.kind, i, num, look); worldGroup.add(ac.obj.root); byId[ac.id] = ac; buildPhase(ac);
     ac.lastYaw = null; ac.yaw = 0;
     if (ac.key) { const r = ringFor(ac.kind === 'att' ? 0xff7a52 : ac.kind === 'def' ? 0x6f9bff : 0xffe066); ac.obj.root.add(r); }
   });
@@ -2002,6 +2046,8 @@ function instantiate() {
   ORDER = actors.slice().sort((a, b) => (a.holding ? -1 : a.prio != null ? a.prio : 1) - (b.holding ? -1 : b.prio != null ? b.prio : 1));
   resolveBall();
   setupContact();
+  // adım fazı temas için ayarlandıktan sonra top sürme konumu değişir: sonraki parçaların başlangıcını yeniden bağla
+  TL.ball.forEach((s, i) => { if (s.aRef) s.a = segPos(TL.ball[i - 1], s.t0); });
   if (S.type === 'handball' && TL.handPt && TL.key != null) setupHandContact();
   buildExtras();
   // ofsayt çizgileri
@@ -2124,7 +2170,13 @@ function buildMarks() {
   }
 }
 function segPos(s, t) {
-  if (s.hold) { const ac = byId[s.hold]; const tt = clamp(t, s.t0, s.t1); const p = posAt(ac, tt); const y = yawRaw(ac, tt, null); return { x: p.x + Math.sin(y) * s.fwd, y: s.y != null ? s.y : .11, z: p.z + Math.cos(y) * s.fwd }; }
+  if (s.hold) {
+    const ac = byId[s.hold]; const tt = clamp(t, s.t0, s.t1); const p = posAt(ac, tt); const y = yawRaw(ac, tt, null);
+    // top sürme: her iki adımda bir sağ ayakla dokunuş; top önce açılır, oyuncu yetişip yeniden dokunur
+    let f = s.fwd;
+    if (s.y == null && ac.S && ac.S.PH) { const k = clamp((sAt(ac.S, tt, ac.S.SP) - 1.5) / 2); if (k > 0) { let u = ((sAt(ac.S, tt, ac.S.PH) + (ac.phOff || 0) - .93) / 2) % 1; if (u < 0) u += 1; f += k * (.6 * Math.sin(Math.PI * Math.pow(u, .7)) - .22); } }
+    return { x: p.x + Math.sin(y) * f, y: s.y != null ? s.y : .11, z: p.z + Math.cos(y) * f };
+  }
   const f = clamp((t - s.t0) / ((s.t1 - s.t0) || 1)); const fe = s.ease ? easeOut(f) : f;
   return { x: s.a.x + (s.b.x - s.a.x) * fe, y: s.a.y + (s.b.y - s.a.y) * fe + 4 * (s.h || 0) * f * (1 - f), z: s.a.z + (s.b.z - s.a.z) * fe };
 }
@@ -2132,7 +2184,7 @@ function resolveBall() {
   const v = new THREE.Vector3();
   for (let i = 0; i < TL.ball.length; i++) {
     const s = TL.ball[i]; if (s.hold) continue;
-    if (s.a === 'prev' || s.a === 'hold') s.a = segPos(TL.ball[i - 1], s.t0);
+    if (s.a === 'prev' || s.a === 'hold') { s.aRef = s.a; s.a = segPos(TL.ball[i - 1], s.t0); }
     if (s.b && (s.b.hand || s.b.part)) {
       const ac = byId[s.b.hand || s.b.part]; poseActor(ac, s.t1, null, true); ac.obj.root.updateMatrixWorld(true);
       let mp = null;
@@ -2154,6 +2206,51 @@ function ballAt(t) {
   return segPos(s, t);
 }
 function lerpAngle(a, b, k) { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * k; }
+/* ---------- koşu döngüsü ----------
+   Her bacak için adım fazı p ∈ [0,1): 0 = ayak yere basıyor, D = parmak ucu yerden kalkıyor, sonrası salınım.
+   s: yürüyüş (0) ↔ sprint (1). Kalça, diz ve ayak eğrileri gerçek koşu ölçümlerinin biçimini izler;
+   adım uzunluğu bu eğrilerden hesaplanır, böylece yere basan ayak kaymaz. */
+const GL1 = .46, GL2 = .4;
+function cyc(keys, p) {
+  const n = keys.length; p -= Math.floor(p);
+  let i = 0; for (let k = 0; k < n; k++) if (keys[k][0] <= p) i = k;
+  const at = j => { const q = i + j, w = Math.floor(q / n); return [keys[q - w * n][0] + w, keys[q - w * n][1]]; };
+  const [t0, v0] = at(-1), [t1, v1] = at(0), [t2, v2] = at(1), [t3, v3] = at(2);
+  const d = t2 - t1 || 1e-6, u = (p - t1) / d;
+  const m1 = (v2 - v0) / (t2 - t0) * d, m2 = (v3 - v1) / (t3 - t1) * d;
+  const u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * v1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * v2 + (u3 - u2) * m2;
+}
+function gaitKeys(s) {
+  const L = (a, b) => a + (b - a) * s, D = Math.max(.22, .6 - .5 * s), w = 1 - D;
+  const hS = L(-.34, -.7), hT = L(.26, .48);
+  return {
+    D,
+    h: [[0, hS], [D * .5, (hS + hT) / 2], [D, hT], [D + w * .6, L(-.45, -1.15)]],
+    k: [[0, L(.08, .3)], [D * .4, L(.2, .62)], [D, L(.15, .45)], [D + w * .38, L(.85, 2.1)], [D + w * .82, L(.15, .5)]],
+    // ayağın zemine göre açısı (pozitif = parmak ucu aşağıda): topuk/ön ayak basışı, düz basma, itiş, salınım
+    d: [[0, L(-.22, .1)], [D * .45, 0], [D, L(.55, .9)], [D + w * .38, L(1.0, 1.7)], [D + w * .82, L(-.1, .15)]],
+  };
+}
+const STRIDE = [];
+function strideAt(s) {
+  if (!STRIDE.length) for (let i = 0; i <= 20; i++) {
+    const G = gaitKeys(i / 20), z = p => { const h = cyc(G.h, p), k = cyc(G.k, p); return -GL1 * Math.sin(h) - GL2 * Math.sin(h + k); };
+    STRIDE.push(Math.max(.6, (z(0) - z(G.D)) / G.D));
+  }
+  const f = clamp(s) * 20, i = Math.min(19, Math.floor(f)); return STRIDE[i] + (STRIDE[i + 1] - STRIDE[i]) * (f - i);
+}
+const gaitS = v => clamp((v - .4) / 7);
+// her oyuncu için yol boyunca adım fazı (döngü sayısı) ve hız
+function buildPhase(ac) {
+  const S2 = ac.S, sc = ac.obj ? ac.obj.root.scale.x : 1, n = S2.n, PH = new Float32Array(n), SP = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const a = Math.max(0, i - 4), b = Math.min(n - 1, i + 4); SP[i] = (S2.D[b] - S2.D[a]) / (((b - a) * SDT) || 1); }
+  for (let i = 1; i < n; i++) PH[i] = PH[i - 1] + (S2.D[i] - S2.D[i - 1]) / (strideAt(gaitS(SP[i])) * sc);
+  S2.PH = PH; S2.SP = SP;
+}
+// vücudun zemine değebilecek noktaları
+const GMK = ['gToeL', 'gToeR', 'gHeelL', 'gHeelR', 'soleL', 'soleR', 'kneeL', 'kneeR', 'kneeBL', 'kneeBR', 'thighBL', 'thighBR', 'seat', 'hipSideL', 'hipSideR', 'handL', 'handR', 'elbowL', 'elbowR', 'chest', 'back', 'lowBack', 'shoulderL', 'shoulderR', 'head', 'face', 'crown'];
+const _g = new THREE.Vector3();
 function poseActor(ac, t, bp, snap, dt) {
   const p = posAt(ac, t); const yr = yawRaw(ac, t, bp);
   ac.yaw = snap || ac.lastYaw == null ? yr : lerpAngle(ac.yaw, yr, 1 - Math.exp(-(dt || .016) * 11));
@@ -2165,20 +2262,46 @@ function poseActor(ac, t, bp, snap, dt) {
   const spd = Math.hypot(pb.x - pa.x, pb.z - pa.z) / .24;
   // virajda içe doğru eğilme
   const turn = clamp(((p.x - pa.x) * (pb.z - p.z) - (p.z - pa.z) * (pb.x - p.x)) / .0144 * .02, -.28, .28);
-  const sw = clamp(spd / 5.5) * o.run; const ph = (ac.S ? sAt(ac.S, t, ac.S.D) : distAlong(ac, t)) * 2.3 + (ac.phOff || 0); const sn = Math.sin(ph), cs = Math.cos(ph);
+  const sw = clamp(spd / 1.1) * o.run, s = gaitS(spd);
+  const ph = (ac.S && ac.S.PH ? sAt(ac.S, t, ac.S.PH) : distAlong(ac, t) / 2.6) + (ac.phOff || 0);
+  const G = gaitKeys(s), pR = ph, pL = ph + .5;
+  const hR = cyc(G.h, pR), hL = cyc(G.h, pL), kR = cyc(G.k, pR), kL = cyc(G.k, pL);
+  const hMid = (G.h[2][1] + G.h[3][1]) / 2, hAmp = (G.h[2][1] - G.h[3][1]) / 2;
+  const fwR = clamp((hMid - hR) / hAmp, -1, 1), fwL = clamp((hMid - hL) / hAmp, -1, 1);
+  const leanT = .05 * s * sw, lean = (.05 + .17 * s) * sw;
+  const fR = cyc(G.d, pR) - (hR + kR) - leanT, fL = cyc(G.d, pL) - (hL + kL) - leanT;
+  // durgunken nefes ve hafif ağırlık aktarımı
+  const idle = 1 - clamp(sw / .15), ip = t * 2.2 + ac.id.length * 1.7;
+  const br = Math.sin(ip) * .012 * idle, shift = Math.sin(t * .7 + ac.id.length) * .025 * idle * o.run;
+  const yawP = (.05 + .1 * s) * sw * (fwR - fwL) / 2;
   O.tilt.position.y = o.h;
-  // koşu: kalça öne çıkan bacakla döner, omuzlar ters döner, baş sabit kalır; dururken hafif nefes
-  const br = sw < .15 ? Math.sin(t * 2.2 + (ac.id.length * 1.7)) * .012 * (1 - sw / .15) : 0;
-  O.tilt.rotation.x = o.tx + .1 * sw; O.tilt.rotation.z = o.tz + turn * o.run + cs * .022 * sw; O.body.position.y = o.y + Math.abs(sn) * .045 * sw; O.body.rotation.y = o.roll + sn * .09 * sw;
-  O.spine.rotation.set(o.sx + .06 * sw + br, o.sy - sn * .2 * sw, o.sz);
-  O.neck.rotation.set(o.hx - .05 * sw - br * .6, o.hy + sn * .11 * sw, 0);
-  O.legL.rotation.set(o.lL + sn * .78 * sw, 0, o.bL); O.legR.rotation.set(o.lR - sn * .78 * sw, 0, o.bR);
-  O.kneeL.rotation.x = o.kL + sw * (.2 + 1.15 * Math.max(0, -cs)); O.kneeR.rotation.x = o.kR + sw * (.2 + 1.15 * Math.max(0, cs));
-  O.ankL.rotation.set(o.fL + sw * .3 * Math.max(0, -cs), o.gL, 0); O.ankR.rotation.set(o.fR + sw * .3 * Math.max(0, cs), o.gR, 0);
-  O.armL.rotation.set(o.aLx - sn * .55 * sw * (Math.abs(o.aLx) < .05 ? 1 : 0), 0, o.aLz);
-  O.armR.rotation.set(o.aRx + sn * .55 * sw * (Math.abs(o.aRx) < .05 ? 1 : 0), 0, o.aRz);
-  O.elbL.rotation.x = o.eL - sw * (1 + .25 * Math.max(0, sn)); O.elbR.rotation.x = ac.kind === 'ar' ? 0 : o.eR - sw * (1 + .25 * Math.max(0, -sn));
+  O.tilt.rotation.x = o.tx + leanT; O.tilt.rotation.z = o.tz + turn * o.run + shift;
+  O.body.position.y = o.y; O.body.rotation.set(0, o.roll + yawP, -shift * .6);
+  O.spine.rotation.set(o.sx + lean + br, o.sy - yawP * 1.7, o.sz + shift * .4);
+  // baş: koşarken sabit, durgunken topu takip eder
+  let look = 0;
+  if (bp && o.lk > .01) { let a = Math.atan2(bp.x - p.x, bp.z - p.z) - ac.yaw; a = Math.atan2(Math.sin(a), Math.cos(a)); look = clamp(a, -1, 1) * (1 - st(1.4, 2.3, Math.abs(a))) * o.lk * (1 - .5 * sw); }
+  O.neck.rotation.set(o.hx - lean * .7 - br * .6, o.hy + yawP * .7 + look * .65, 0);
+  O.spine.rotation.y += look * .25;
+  const mix = (a, b) => a + (b - a) * sw;
+  const fl = o.fl, fa = t * 10.3 + ac.id.length;
+  O.legL.rotation.set(mix(o.lL, hL) + fl * .18 * Math.sin(fa * .9), 0, o.bL); O.legR.rotation.set(mix(o.lR, hR) + fl * .18 * Math.sin(fa * .8 + 2), 0, o.bR);
+  O.kneeL.rotation.x = mix(o.kL, kL); O.kneeR.rotation.x = mix(o.kR, kR);
+  O.ankL.rotation.set(mix(o.fL, fL), o.gL, 0); O.ankR.rotation.set(mix(o.fR, fR), o.gR, 0);
+  // kollar bacakların tersine; dirsekler koşuda ~80°, öndeki kol daha bükük
+  const freeL = Math.abs(o.aLx) < .05 ? 1 : .2, freeR = Math.abs(o.aRx) < .05 ? 1 : .2, aAmp = .18 + .55 * s;
+  O.armL.rotation.set(o.aLx - aAmp * fwR * sw * freeL + fl * .55 * Math.sin(fa), 0, o.aLz + (.05 + .08 * s) * sw * freeL - .06 * s * sw * pos0(fwR) + fl * .35 * Math.sin(fa * .77));
+  O.armR.rotation.set(o.aRx - aAmp * fwL * sw * freeR + fl * .55 * Math.sin(fa * .88 + 2.3), 0, o.aRz - (.05 + .08 * s) * sw * freeR + .06 * s * sw * pos0(fwL) - fl * .35 * Math.sin(fa * .81 + 1.1));
+  const eRun = -(1.05 + .35 * s) + .2;
+  O.elbL.rotation.x = o.eL + (eRun - .3 * s * pos0(fwR)) * sw * freeL;
+  O.elbR.rotation.x = ac.kind === 'ar' ? 0 : o.eR + (eRun - .3 * s * pos0(fwL)) * sw * freeR;
   O.root.updateMatrixWorld(true);
+  // zemine oturtma: en alttaki nokta zemine (gnd) ya da en azından zeminin üstüne
+  let lo = 1e9; for (const n of GMK) { const m = O.mk[n]; if (!m) continue; m.getWorldPosition(_g); if (_g.y < lo) lo = _g.y; }
+  const want = o.gnd * -lo + (1 - o.gnd) * Math.max(0, -lo);
+  let lift = 0;
+  if (ac.lift) { const L = ac.lift; lift = t <= L.t0 || t >= L.t1 ? 0 : L.dy * (t < L.tc ? Math.sin(Math.PI / 2 * (t - L.t0) / (L.tc - L.t0)) : Math.cos(Math.PI / 2 * (t - L.tc) / (L.t1 - L.tc))); }
+  if (Math.abs(want + lift) > 1e-4) { O.tilt.position.y += (want + lift) / O.root.scale.y; O.root.updateMatrixWorld(true); }
   if (ac.ik) for (const e of ac.ik) { if (!LIMB[e.limb]) continue; const w = ikW(e, t); if (w > .001) solveIK(ac, e, t, w); }
 }
 
@@ -2248,13 +2371,14 @@ function shiftTrack(ac, s, tc) {
   const S2 = ac.S;
   for (let i = 0; i < S2.n; i++) { const t = i * SDT; const w = t >= tc ? 1 : t <= tc - 1.2 ? 0 : smooth((t - tc + 1.2) / 1.2); S2.X[i] += s.x * w; S2.Z[i] += s.z * w; }
   for (let i = 1; i < S2.n; i++) S2.D[i] = S2.D[i - 1] + Math.hypot(S2.X[i] - S2.X[i - 1], S2.Z[i] - S2.Z[i - 1]);
+  buildPhase(ac);
 }
 function setupContact() {
   TL.cdata = null; TL.stretchMesh = null;
   const CI = TL.contact, ag = byId.def, vic = byId.att, tc = TL.key;
   if (S.type !== 'foul' || !CI || !ag || !vic) return;
-  const PH = { R: { back: 4.712, plant: 3.1416, front: 1.5708 }, L: { back: 1.5708, plant: 0, front: 4.712 } };
-  if (vic.gait) vic.phOff = PH[vic.gait.leg][vic.gait.phase] - sAt(vic.S, vic.gait.t, vic.S.D) * 2.3;
+  // temas anında hücumcunun sağ bacağı istenen adım fazında olsun (basmış / arkada / önde)
+  if (vic.gait) { const G = gaitKeys(gaitS(sAt(vic.S, vic.gait.t, vic.S.SP))); const tg = { plant: G.D * .45, back: G.D * .95, front: .86 }[vic.gait.phase] - (vic.gait.leg === 'L' ? .5 : 0); vic.phOff = tg - sAt(vic.S, vic.gait.t, vic.S.PH); }
   const ik = ag.ik || [];
   // uzuv seçimi: hedefe yakın olan bacak / kol
   const pending = ik.filter(e => e.limb === 'leg' || e.limb === 'arm');
@@ -2300,6 +2424,14 @@ function setupContact() {
     } else break;
     if (len(sh) < .004) break;
     shiftTrack(ag, sh, tc);
+  }
+  // üzerine sıçramada diz, rakibin vücudundaki temas noktasının yüksekliğine çıkacak kadar sıçrar
+  ag.lift = null;
+  if (ag.bodyC && ag.bodyC.eff.startsWith('knee')) {
+    poseAllAt(tc);
+    const tg = vic.obj.mk[ag.bodyC.part].getWorldPosition(new THREE.Vector3()), ef = ag.obj.mk[ag.bodyC.eff].getWorldPosition(new THREE.Vector3());
+    ag.lift = { t0: tc - .34, tc, t1: tc + .36, dy: clamp(tg.y - ef.y - .04, -.15, .5) };
+    for (let it = 0; it < 3; it++) { poseAllAt(tc); const a = standoff(ag, vic.obj.mk[ag.bodyC.part].getWorldPosition(new THREE.Vector3()), ag.bodyC.so), b = ag.obj.mk[ag.bodyC.eff].getWorldPosition(new THREE.Vector3()); const sh = V(a.x - b.x, a.z - b.z); if (len(sh) < .004) break; shiftTrack(ag, sh, tc); }
   }
   // kalan boşluğu kapat (uzuv hedefe tam değsin)
   if (main && main.eff !== 'elbow') for (let it = 0; it < 4; it++) {
@@ -2814,6 +2946,6 @@ function boot() {
 }
 boot();
 </script>
-<script src="pwa.js?v=20261120110647"></script>
+<script src="pwa.js?v=20261120114158"></script>
 </body>
 </html>
